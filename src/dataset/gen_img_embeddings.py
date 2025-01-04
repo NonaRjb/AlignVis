@@ -53,7 +53,7 @@ if __name__ == "__main__":
     train_concepts = os.listdir(train_img_parent_dir)
     train_concepts.sort()
     train_embeddings = []
-    for concept in train_concepts:
+    for n, concept in enumerate(train_concepts):
         train_img_files = os.listdir(os.path.join(train_img_parent_dir, concept))
         train_img_files.sort()
         for i, item in enumerate(train_img_files):
@@ -70,9 +70,9 @@ if __name__ == "__main__":
                 np.save(os.path.join(save_path, train_dir, concept, item.replace(".jpg", f"_{args.model_name}_{args.model_type}.npy")), e)
             else:
                 np.save(os.path.join(save_path, train_dir, concept, item.replace(".jpg", f"_{args.model_name}_{args.model_type}_noalign.npy")), e)
-            if i % 1000 == 0:
-                print(f"{item} items out of 16540 done")
-                print(f"e.shape = {e.shape}")
+        if n % 100 == 0:
+            print(f"{item} concepts out of {len(train_concepts)} done")
+            print(f"e.shape = {e.shape}")
     
     print("Start Embedidng Test Images")
     test_dir = 'images_test_meg'

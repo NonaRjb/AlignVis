@@ -63,7 +63,6 @@ class ThingsMEG(Dataset):
             label_mapping = {label: idx for idx, label in enumerate(unique_labels)}
             mapped_labels_subj = [label_mapping[label] for label in labels_subj]
             
-            # TODO: average test data repetitions
             if split == "test":
                 # Find unique images
                 unique_images = np.unique(image_list_subj)

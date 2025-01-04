@@ -177,7 +177,8 @@ class BimodalTrainer:
             }
 
         print(f"Best Validation Loss = {best_model['val_loss']} (Epoch = {best_model['epoch']})")
-        torch.save(best_model, os.path.join(self.save_path, self.filename + f"_{epoch}" + ".pth"))
+        os.makedirs(os.path.join(self.save_path, "models"), exist_ok=True)
+        torch.save(best_model, os.path.join(self.save_path, "models", self.filename + f"_{epoch}" + ".pth"))
         print("Finished creating checkpoint.")
 
         return best_model

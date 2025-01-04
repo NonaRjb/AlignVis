@@ -57,7 +57,7 @@ class ThingsEEG2(Dataset):
         
             eeg_parent_dir = os.path.join(self.data_path, 'Preprocessed_data_250Hz', 'sub-'+"{:02d}".format(sid))
             eeg_data = np.load(os.path.join(eeg_parent_dir,
-                    'preprocessed_eeg_training.npy' if self.split == "train" else 'preprocessed_eeg_test.npy'), allow_pickle=True)
+                    'preprocessed_eeg_training.npy' if self.split == "train" else 'preprocessed_eeg_test.npy'), allow_pickle=True, mmap_mode='r')
             subject_eeg_data = eeg_data['preprocessed_eeg_data']
             if select_channels:
                 subject_eeg_data = subject_eeg_data[:, :, select_channels, :]

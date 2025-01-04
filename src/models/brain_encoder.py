@@ -50,7 +50,7 @@ class BrainEncoder(nn.Module): # TODO: now every architecture has a classificati
 
         elif backbone == 'nice':
             print("Using NICE backbone")
-            self.brain_backbone = NICE(proj_emb_dim=217360, proj_dim=embed_dim) # 217360 for MEG and 1440 for EEG
+            self.brain_backbone = NICE(emb_size=kwargs['emb_size'], embedding_dim=kwargs['embedding_dim'], proj_dim=embed_dim) # 217360 for MEG and 1440 for EEG
             if self.checkpoint:
                 self.brain_backbone.load_state_dict(self.checkpoint)
             self.feature_dim = embed_dim

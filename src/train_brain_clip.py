@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 from datetime import datetime
 import wandb
+import random
 import argparse
 import os
 import warnings
@@ -23,26 +24,60 @@ from src import downstream
 
 model_configs = {
         'eegnet': {},
-        'nice': {},
+        'nice': {'emb_size': 40, 'embedding_dim': 1440, 'drop_proj': 0.5},
         'atms': {},
         'lstm': {'lstm_size': 128, 'lstm_layers': 1},
         'resnet1d': {},
         'resnet1d_subj': {},
         'resnet1d_subj_resblk': {},
         'brain-mlp': {},
+        'dinov2_vit-l-14_noalign': {'embed_dim': 1024},
+        'DINOv2_ViT-L14_noalign': {'embed_dim': 1024},
+        'DINO_ViT-B8_noalign': {'embed_dim': 768},
+        'DINOv2_ViT-B14_noalign': {'embed_dim': 768},
+        'DINO_ViT-B16_noalign': {'embed_dim': 768},
+        'CLIP_ViT-L14_noalign': {'embed_dim': 768},
+        'CLIP_ViT-B32_noalign': {'embed_dim': 512},
+        'OpenCLIP_ViT-L14_laion400m_noalign': {'embed_dim': 768},
+        'OpenCLIP_ViT-L14_laion2b_noalign': {'embed_dim': 768},
+        'OpenCLIP_ViT-B32_laion400m_noalign': {'embed_dim': 512},
+        'dreamsim_clip_vitb32_768': {'embed_dim': 768},
         'dreamsim_clip_vitb32': {'embed_dim': 512},
         'dreamsim_clip_vitb32_noalign': {'embed_dim': 512},
-        'dreamsim_clip_vitb32_768': {'embed_dim': 768},
+        'dreamsim_open_clip_vitb32': {'embed_dim': 512},
+        'dreamsim_open_clip_vitb32_noalign': {'embed_dim': 512},
+        'dreamsim_synclr_vitb16': {'embed_dim': 768},
+        'dreamsim_synclr_vitb16_noalign': {'embed_dim': 768},
         'dreamsim_ensemble': {'embed_dim': 1792},
         'dreamsim_ensemble_noalign': {'embed_dim': 1792},
         'dreamsim_dino_vitb16': {'embed_dim': 768},
         'dreamsim_dino_vitb16_noalign': {'embed_dim': 768},
+        'dreamsim_dinov2_vitb14': {'embed_dim': 768},
+        'dreamsim_dinov2_vitb14_noalign': {'embed_dim': 768},
+        'gLocal_openclip_vit-l-14_laion2b_s32b_b82k': {'embed_dim': 768},
+        'gLocal_openclip_vit-l-14_laion2b_s32b_b82k_noalign': {'embed_dim': 768},
+        'gLocal_openclip_vit-l-14_laion400m_e32': {'embed_dim': 768},
+        'gLocal_openclip_vit-l-14_laion400m_e32_noalign': {'embed_dim': 768},
+        'gLocal_clip_vit-l-14': {'embed_dim': 768},
+        'gLocal_clip_vit-l-14_noalign': {'embed_dim': 768},
+        'gLocal_dino-vit-base-p8': {'embed_dim': 768},
+        'gLocal_dino-vit-base-p8_noalign': {'embed_dim': 768},
+        'gLocal_dino-vit-base-p16': {'embed_dim': 768},
+        'gLocal_dino-vit-base-p16_noalign': {'embed_dim': 768},
+        'gLocal_dinov2-vit-base-p14': {'embed_dim': 768},
+        'gLocal_dinov2-vit-base-p14_noalign': {'embed_dim': 768},
+        'gLocal_dinov2-vit-large-p14': {'embed_dim': 1024},
+        'gLocal_dinov2-vit-large-p14_noalign': {'embed_dim': 1024},
+        'gLocal_clip_rn50': {'embed_dim': 1024},
+        'gLocal_clip_rn50_noalign': {'embed_dim': 1024},
+        'harmonization_vitb16': {'embed_dim': 768},
+        'harmonization_vitb16_noalign': {'embed_dim': 768},
     }
 
 
 def seed_everything(seed_val):
     np.random.seed(seed_val)
-    # random.seed(seed_val)
+    random.seed(seed_val)
     torch.manual_seed(seed_val)
     torch.cuda.manual_seed(seed_val)
     torch.cuda.manual_seed_all(seed_val)
@@ -139,7 +174,7 @@ def return_dataloaders(
                             num_workers=num_workers,
                             pin_memory=True if 'cuda' in device_type else False,
                             generator=g)
-    val_dl = DataLoader(val_data, batch_size=batch, shuffle=False,
+    val_dl = DataLoader(val_data, batch_size=64, shuffle=False,
                             drop_last=False,
                             num_workers=num_workers,
                             pin_memory=True if 'cuda' in device_type else False,
@@ -186,6 +221,10 @@ if __name__ == "__main__":
             model_configs['resnet1d_subj']['net_seq_length'] = args.net_seq_length
             model_configs['resnet1d_subj_resblk']['net_seq_length'] = args.net_seq_length
 
+        if args.dataset == "things-meg":
+            model_configs['nice']['embedding_dim'] = 217360
+            model_configs['nice']['emb_size'] = 40
+
         if args.checkpoint:
             model_configs[brain_enc_name]['subject_ids'] = [str(s) for s in range(1, 11)]
         else:
@@ -217,14 +256,20 @@ if __name__ == "__main__":
         start_str = "scratch" if args.checkpoint is None else "pretrained"
 
         if test_subject is None:
-            directory_name = f"{start_str}_{dataset_name}_s{subject_id}_r{args.subj_training_ratio}_{brain_enc_name}_{img_enc_name}_"
+            directory_name = f"{img_enc_name}"
         else:
-            directory_name = f"{start_str}_{dataset_name}_ts{test_subject}_r{args.subj_training_ratio}_{brain_enc_name}_{img_enc_name}_"
+            directory_name = f"{img_enc_name}"
         
         current_datetime = datetime.now()
-        directory_name += current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
-        paths["save_path"] = os.path.join(paths["save_path"], directory_name)
-        os.makedirs(paths["save_path"], exist_ok=True)
+        # directory_name += current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        os.makedirs(os.path.join(paths["save_path"], directory_name), exist_ok=True)
+        if len(args.subject_id) == 1:
+            os.makedirs(os.path.join(paths["save_path"], directory_name, f"sub-{subject_id:02}"), exist_ok=True)
+            paths["save_path"] = os.path.join(paths["save_path"], directory_name, f"sub-{subject_id:02}")
+        else:
+            os.makedirs(os.path.join(paths["save_path"], directory_name, f"sub-{test_subject:02}"), exist_ok=True)
+            paths["save_path"] = os.path.join(paths["save_path"], directory_name, f"sub-{test_subject:02}")
+        
         print(f"Directory '{directory_name}' created.")
         utils.save_config(args, root_path=paths['save_path'])
         print(vars(args))
@@ -309,7 +354,7 @@ if __name__ == "__main__":
                 lr_patience=args.patience,
                 es_patience=30,
                 save_path=paths["save_path"], 
-                filename=f'{brain_enc_name}_{dataset_name}', 
+                filename=f'{brain_enc_name}_{dataset_name}_seed{seed}', 
                 initial_epochs=args.subj_spec_epochs,
                 precompute_img_emb=True if args.img == "embedding" else False,
                 device=device
@@ -371,7 +416,8 @@ if __name__ == "__main__":
                 'top3': top3_acc,
                 'top5': top5_acc
             }
-            with open(os.path.join(paths["save_path"], "topk_performances.pkl"), 'wb') as f:
+            os.makedirs(os.path.join(paths["save_path"], "performances"), exist_ok=True)
+            with open(os.path.join(paths["save_path"], "performances", f"topk_performances_{seed}.pkl"), 'wb') as f:
                 pickle.dump(topk_scores, f)
         else:
             print("No Downstream Task Selected. We Are Done!")
