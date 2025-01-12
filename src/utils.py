@@ -50,11 +50,13 @@ def load_dataset(dataset_name, data_path, **kwargs):
             training_ratio=kwargs['subj_training_ratio'],
         )
     elif dataset_name == "things-eeg-2":
+        fs = kwargs['interpolate'] if 'interpolate' in kwargs.keys() and kwargs['interpolate'] is not None else 251
+        n_samples = fs if 'window' not in kwargs.keys() or kwargs['window'] is None else int((kwargs['window'][1]-kwargs['window'][0])*fs)
         data_configs = {
             "t_l": 0.0,
             "t_h": 1.0,
             "fs": kwargs['interpolate'] if 'interpolate' in kwargs.keys() else 250, 
-            "n_samples": kwargs['interpolate'] if 'interpolate' in kwargs.keys() and kwargs['interpolate'] is not None else 251,
+            "n_samples": n_samples,
             "n_channels": 63 if 'select_channels' not in kwargs.keys() or kwargs['select_channels'] is None else len(kwargs['select_channels']),
             "n_classes": 1654,
         }
@@ -70,6 +72,7 @@ def load_dataset(dataset_name, data_path, **kwargs):
             training_ratio=kwargs['subj_training_ratio'],
             img_encoder=kwargs['img_encoder'],
             interpolate=kwargs['interpolate'] if 'interpolate' in kwargs.keys() else None,
+            window=kwargs['window'] if 'window' in kwargs.keys() else None,
         )
     elif dataset_name == "things-meg":
         data_configs = {
@@ -136,7 +139,7 @@ def get_embeddings(model, data_loader, modality="eeg", return_subject_id=False, 
         if save_path:
             np.save(save_path, embeddings)
         else:
-            np.save("./embeddings.py", embeddings)
+            np.save("./embeddings.npy", embeddings)
     print(embeddings.shape)
     print(labels)
     return embeddings, labels

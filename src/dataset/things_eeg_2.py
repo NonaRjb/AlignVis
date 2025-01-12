@@ -25,6 +25,7 @@ class ThingsEEG2(Dataset):
         training_ratio=1.0,
         img_encoder=None,
         interpolate=None,
+        window=None,
         download=False,
         ):
 
@@ -38,6 +39,8 @@ class ThingsEEG2(Dataset):
         self.training_ratio = training_ratio
         self.img_encoder = img_encoder
         self.interpolate = interpolate
+        self.window = window
+        self.fs = self.interpolate if self.interpolate is not None else 250
 
         if isinstance(subject_id, int):
             subject_id = [subject_id]
@@ -108,7 +111,15 @@ class ThingsEEG2(Dataset):
             f = interp1d(x1, eeg, axis=-1)
             eeg = f(x2)
         
-        
+        if self.window is not None:
+            n0 = int(self.window[0]*self.fs)
+            n1 = int(self.window[1]*self.fs)
+            eeg = eeg[..., n0:n1]
+            x1 = np.linspace(0, 1, eeg.shape[-1])
+            x2 = np.linspace(0, 1, 250)
+            f = interp1d(x1, eeg, axis=-1)
+            eeg = f(x2)
+
         eeg = (eeg - np.mean(eeg, axis=-1, keepdims=True)) / np.linalg.norm(eeg, axis=-1, keepdims=True)
 
         img_item = self.selected_indices[item] if self.selected_indices is not None else item

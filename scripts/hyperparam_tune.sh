@@ -2,7 +2,7 @@
 #SBATCH -A berzelius-2024-324
 #SBATCH --mem 800GB
 #SBATCH --gpus=1
-#SBATCH --ntasks=2
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH -t 2-00:00:00
 #SBATCH --mail-type FAIL
@@ -16,10 +16,10 @@ save_path=/proj/rep-learning-robotics/users/x_nonra/data/
 data_path=/proj/rep-learning-robotics/users/x_nonra/alignvis/data
 experiment="hyperparam_tune"
 img_enc="dreamsim_clip_vitb32"
-dataset="things-meg"
+dataset="things-eeg-2"
 
 temperatures=(0.04 0.07 0.1 0.5)
-batch_sizes=(128 256 512 1024)
+batch_sizes=(64 128 256 512)
 
 temp_idx=$((SLURM_ARRAY_TASK_ID / ${#batch_sizes[@]}))
 batch_idx=$((SLURM_ARRAY_TASK_ID % ${#batch_sizes[@]}))
@@ -45,15 +45,15 @@ apptainer exec --nv $CONTAINER python src/train_brain_clip.py \
   --separate_test \
   --dataset "$dataset" \
   --subject_id 1 \
-  --eeg_enc "nice" \
+  --eeg_enc "eegnet" \
   --img_enc "$img_enc" \
-  --epoch 50 \
+  --epoch 200 \
   --experiment "$experiment" \
   --img "embedding" \
   --downstream "retrieval" \
   -b "$batch_size" \
   --n_workers 8 \
-  --lr 0.0001 \
+  --lr 0.01 \
   --warmup 0 \
   --seed 42 \
   --temperature "$temperature" \

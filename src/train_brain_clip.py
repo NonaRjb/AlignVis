@@ -72,6 +72,10 @@ model_configs = {
         'gLocal_clip_rn50_noalign': {'embed_dim': 1024},
         'harmonization_vitb16': {'embed_dim': 768},
         'harmonization_vitb16_noalign': {'embed_dim': 768},
+        'harmonization_resnet50': {'embed_dim': 2048},
+        'harmonization_resnet50_noalign': {'embed_dim': 2048},
+        'harmonization_convnext': {'embed_dim': 768},
+        'harmonization_convnext_noalign': {'embed_dim': 768},
     }
 
 
@@ -99,6 +103,7 @@ def parse_args():
     parser.add_argument('--subj_training_ratio', type=float, default=1, help="a ratio between 0 and 1 determining how much of participants training samples to be used")
     parser.add_argument('--channels', type=int, nargs='+', default=None)
     parser.add_argument('--interpolate', type=int, default=None, help="Resampling rate for EEG data")
+    parser.add_argument('--window', type=float, nargs=2, default=None, help="Window start and end for EEG data")
     parser.add_argument('--eeg_enc', type=str, default="resnet1d", help="EEG Encoder")
     parser.add_argument('--img_enc', type=str, default="CLIP_IMG", help="Image Encoder")
     parser.add_argument('--img_enc_model', type=str, default=None, help="Image Encoder Model")
@@ -128,6 +133,7 @@ def return_dataloaders(
     dataset_nm, 
     data_pth, 
     sid, 
+    subj_training_ratio,
     batch, 
     num_workers, 
     seed_val, 
@@ -139,13 +145,9 @@ def return_dataloaders(
         dataset_name=dataset_nm, 
         data_path=data_path, 
         sid=sid, 
-        load_img=kwargs['load_img'], 
-        return_subject_id=kwargs['return_subject_id'],
+        subj_training_ratio=subj_training_ratio,
         split='train',
-        select_channels=kwargs['select_channels'], 
-        subj_training_ratio=kwargs['subj_training_ratio'], 
-        img_encoder=kwargs['img_enc_name'],
-        interpolate=kwargs['interpolate'],
+        **kwargs
         )
     
     print(ds_configs)
@@ -162,13 +164,9 @@ def return_dataloaders(
             dataset_name=dataset_nm, 
             data_path=data_path, 
             sid=kwargs['test_subject'], 
-            load_img=kwargs['load_img'], 
-            return_subject_id=kwargs['return_subject_id'],
-            split='test', 
-            select_channels=kwargs['select_channels'], 
+            split='test',  
             subj_training_ratio=1.0, 
-            img_encoder=kwargs['img_enc_name'],
-            interpolate=kwargs['interpolate'],)
+            **kwargs)
     train_dl = DataLoader(train_data, batch_size=batch, shuffle=True,
                             drop_last=True,
                             num_workers=num_workers,
@@ -286,8 +284,9 @@ if __name__ == "__main__":
             select_channels=channels,
             return_subject_id=args.return_subject_id,
             subj_training_ratio=args.subj_training_ratio if args.subj_training_ratio > 0 else 0.01,
-            img_enc_name=img_enc_name,
+            img_encoder=img_enc_name,
             interpolate=args.interpolate,
+            window=args.window,
             device_type=device)   
         
         if args.img == "raw":
@@ -381,8 +380,9 @@ if __name__ == "__main__":
                 return_subject_id=args.return_subject_id,
                 select_channels=channels,
                 subj_training_ratio=args.subj_training_ratio,
-                img_enc_name=img_enc_name,
+                img_encoder=img_enc_name,
                 interpolate=args.interpolate,
+                window=args.window,
                 device_type=device)
             loaders = {'train': train_data_loader, 'val': val_data_loader, 'test': test_data_loader} 
             raise NotImplementedError
@@ -407,8 +407,9 @@ if __name__ == "__main__":
                 return_subject_id=args.return_subject_id,
                 select_channels=channels,
                 subj_training_ratio=args.subj_training_ratio if args.subj_training_ratio > 0 else 0.01,
-                img_enc_name=img_enc_name,
+                img_encoder=img_enc_name,
                 interpolate=args.interpolate,
+                window=args.window,
                 device_type=device)
             top1_acc, top3_acc, top5_acc = downstream.retrieval(brain_encoder, img_encoder, test_data_loader, return_subject_id=args.return_subject_id, device=device)
             topk_scores = {

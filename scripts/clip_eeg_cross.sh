@@ -15,10 +15,10 @@ CONTAINER=/proj/rep-learning-robotics/users/x_nonra/containers/eeg_torch_contain
 save_path=/proj/rep-learning-robotics/users/x_nonra/data/
 data_path=/proj/rep-learning-robotics/users/x_nonra/alignvis/data
 experiment="nice_things-eeg-2_cross_subject" # "nice_things-eeg-2_insubject"
-img_enc="gLocal_dino-vit-base-p16"
-img_enc_noalign="DINO_ViT-B16_noalign"
+img_enc="dreamsim_dinov2_vitb14"
+img_enc_noalign="dreamsim_dino_vitb16"
 dataset="things-eeg-2"
-seed=7 # 7, 42, 191, 2025, 96723
+seeds=(7 42 191 2025 96723) # Array of seeds
 
 cd /proj/rep-learning-robotics/users/x_nonra/alignvis/
 
@@ -39,10 +39,15 @@ subject_args=$(echo $subject_list)
 echo "Excluding subject_id: $subject_id"
 echo "Subject list: $subject_list"
 
-apptainer exec --nv $CONTAINER python src/train_brain_clip.py --data_path "$data_path" --save_path "$save_path" --separate_test \
---dataset "$dataset" --subject_id $subject_args --test_subject "$subject_id" --eeg_enc "nice" --img_enc "$img_enc" --epoch 150 --experiment "$experiment" --img "embedding" \
---downstream "retrieval" -b 512 --n_workers 10 --lr 0.0001 --warmup 0 --seed "$seed" --temperature 0.04 --scheduler "cosine" &
-apptainer exec --nv $CONTAINER python src/train_brain_clip.py --data_path "$data_path" --save_path "$save_path" --separate_test \
---dataset "$dataset" --subject_id $subject_args --test_subject "$subject_id" --eeg_enc "nice" --img_enc "$img_enc_noalign" --epoch 150 --experiment "$experiment" --img "embedding" \
---downstream "retrieval" -b 512 --n_workers 10 --lr 0.0001 --warmup 0 --seed "$seed" --temperature 0.04 --scheduler "cosine" &
-wait
+# Loop over seeds
+for seed in "${seeds[@]}"; do
+    echo "Running with seed: $seed"
+
+    apptainer exec --nv $CONTAINER python src/train_brain_clip.py --data_path "$data_path" --save_path "$save_path" --separate_test \
+    --dataset "$dataset" --subject_id $subject_args --test_subject "$subject_id" --eeg_enc "nice" --img_enc "$img_enc" --epoch 150 --experiment "$experiment" --img "embedding" \
+    --downstream "retrieval" -b 512 --n_workers 10 --lr 0.0001 --warmup 0 --seed "$seed" --temperature 0.04 --scheduler "cosine" &
+    apptainer exec --nv $CONTAINER python src/train_brain_clip.py --data_path "$data_path" --save_path "$save_path" --separate_test \
+    --dataset "$dataset" --subject_id $subject_args --test_subject "$subject_id" --eeg_enc "nice" --img_enc "$img_enc_noalign" --epoch 150 --experiment "$experiment" --img "embedding" \
+    --downstream "retrieval" -b 512 --n_workers 10 --lr 0.0001 --warmup 0 --seed "$seed" --temperature 0.04 --scheduler "cosine" &
+    wait
+done
