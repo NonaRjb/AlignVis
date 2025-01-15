@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torchvision
 from collections import OrderedDict
-from braindecode.models import EEGConformer
+# from braindecode.models import EEGConformer
 from torchvision.models.feature_extraction import create_feature_extractor, get_graph_node_names
 from src.brain_architectures import EEGNet, NICE, BrainMLP, ResNet1d, lstm
 
@@ -58,28 +58,28 @@ class BrainEncoder(nn.Module): # TODO: now every architecture has a classificati
             print(get_graph_node_names(self.brain_backbone))
             self.return_node = 'projector.2'
         
-        elif backbone == 'eegconformer':
-            self.brain_backbone = EEGConformer(
-                n_outputs=None, 
-                n_chans=n_channels, 
-                n_filters_time=40, 
-                filter_time_length=10, 
-                pool_time_length=25, 
-                pool_time_stride=5, 
-                drop_prob=0.25, 
-                att_depth=2, 
-                att_heads=1, 
-                att_drop_prob=0.5, 
-                final_fc_length=1760, 
-                return_features=False, 
-                n_times=None, 
-                chs_info=None, 
-                input_window_seconds=None, 
-                n_classes=1024, # fixed embedding size 
-                input_window_samples=n_samples, 
-                add_log_softmax=True)
-            self.feature_dim = 1024
-            print(get_graph_node_names(self.brain_backbone))
+        # elif backbone == 'eegconformer':
+        #     self.brain_backbone = EEGConformer(
+        #         n_outputs=None, 
+        #         n_chans=n_channels, 
+        #         n_filters_time=40, 
+        #         filter_time_length=10, 
+        #         pool_time_length=25, 
+        #         pool_time_stride=5, 
+        #         drop_prob=0.25, 
+        #         att_depth=2, 
+        #         att_heads=1, 
+        #         att_drop_prob=0.5, 
+        #         final_fc_length=1760, 
+        #         return_features=False, 
+        #         n_times=None, 
+        #         chs_info=None, 
+        #         input_window_seconds=None, 
+        #         n_classes=1024, # fixed embedding size 
+        #         input_window_samples=n_samples, 
+        #         add_log_softmax=True)
+        #     self.feature_dim = 1024
+        #     print(get_graph_node_names(self.brain_backbone))
         
         # elif backbone == 'atms':
         #     print("Using ATMS backbone")
