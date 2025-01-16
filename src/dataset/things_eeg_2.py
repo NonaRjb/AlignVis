@@ -40,6 +40,7 @@ class ThingsEEG2(Dataset):
         self.img_encoder = img_encoder
         self.interpolate = interpolate
         self.window = window
+        self.channel_names = None
         self.fs = self.interpolate if self.interpolate is not None else 250
 
         if isinstance(subject_id, int):
@@ -62,6 +63,9 @@ class ThingsEEG2(Dataset):
             eeg_data = np.load(os.path.join(eeg_parent_dir,
                     'preprocessed_eeg_training.npy' if self.split == "train" else 'preprocessed_eeg_test.npy'), allow_pickle=True, mmap_mode='r')
             subject_eeg_data = eeg_data['preprocessed_eeg_data']
+            print(eeg_data['ch_names'])
+            if self.channel_names is None:
+                self.channel_names = eeg_data['ch_names']
             if select_channels:
                 subject_eeg_data = subject_eeg_data[:, :, select_channels, :]
 

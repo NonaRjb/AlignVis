@@ -74,6 +74,7 @@ def load_dataset(dataset_name, data_path, **kwargs):
             interpolate=kwargs['interpolate'] if 'interpolate' in kwargs.keys() else None,
             window=kwargs['window'] if 'window' in kwargs.keys() else None,
         )
+        data_configs['ch_names'] = dataset.channel_names
     elif dataset_name == "things-meg":
         data_configs = {
             "t_l": 0.0,
