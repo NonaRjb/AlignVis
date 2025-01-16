@@ -8,11 +8,20 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import argparse
 import os
+import re
 
 import src.utils as utils
 from src.utils import get_embeddings
 from src.models.brain_encoder import BrainEncoder
 from src.train_brain_clip import model_configs
+
+
+model_name_mapping = {
+    'dreamsim_clip_vitb32': 'dreamsim_CLIP_ViT-B32',
+    'CLIP_ViT-B32_noalign': 'CLIP_ViT-B32_noalign',
+    'dreamsim_synclr_vitb16': 'dreamsim_synclr_vitb16',
+    'dreamsim_synclr_vitb16_noalign': 'dreamsim_synclr_vitb16_noalign',
+}
 
 
 def parse_args():
@@ -22,8 +31,7 @@ def parse_args():
     )
     parser.add_argument('--data_path', type=str, default='/data')
     parser.add_argument('--save_path', type=str, default=None)
-    parser.add_argument('--model_path_aligned', type=str, default=None)
-    parser.add_argument('--model_path_noalign', type=str, default=None)
+    parser.add_argument('--model_path', type=str, default=None)
     parser.add_argument('--subject_id', type=int, default=1)
     parser.add_argument('--brain_encoder', type=str, default='nice')
     parser.add_argument('--img_encoder_aligned', type=str, default='dreamsim_clip_vitb32')
@@ -32,6 +40,23 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--dataset', type=str, default='things-eeg-2')
     return parser.parse_args()
+
+
+def load_checkpoint(directory, brain_encoder, dataset_name, seed_n):
+    # Create a regex pattern to match the filename format
+    pattern = rf"{re.escape(brain_encoder)}_{re.escape(dataset_name)}_seed{re.escape(str(seed_n))}_\d+\.pth"
+    
+    # Iterate through the files in the directory
+    for filename in os.listdir(directory):
+        if re.fullmatch(pattern, filename):
+            checkpoint_path = os.path.join(directory, filename)
+            print(f"Loading checkpoint: {checkpoint_path}")
+            # Load the checkpoint
+            checkpoint = torch.load(checkpoint_path)['model_state_dict']
+            return checkpoint
+    
+    # Raise an error if no matching checkpoint is found
+    raise FileNotFoundError(f"No checkpoint found matching the pattern {pattern} in directory {directory}")
 
 
 def load_brain_encoder(model_path, backbone_encoder, embedding_size, device='cuda', **kwargs):
@@ -48,7 +73,8 @@ def load_brain_encoder(model_path, backbone_encoder, embedding_size, device='cud
     brain_encoder = brain_encoder.float()
     brain_encoder.to(device)
     if model_path:
-        checkpoint = torch.load(model_path)['model_state_dict']
+        checkpoint = load_checkpoint(model_path, backbone_encoder, kwargs['dataset_name'], kwargs['seed'])
+        # checkpoint = torch.load(model_path)['model_state_dict']
         brain_encoder.load_state_dict(checkpoint, strict=False)
         brain_encoder.to(device)
     return brain_encoder
@@ -90,9 +116,8 @@ def retrieve_images(eeg_encoder, img_encoder, data_loader, device="cuda:0", retu
     top3 = 0
     top5 = 0
 
-    top1_labels = []
-    top3_labels = []
     top5_labels = []
+    top5_sim_values = []
 
     with torch.no_grad():
         for i, (data, y) in enumerate(data_loader):
@@ -109,10 +134,10 @@ def retrieve_images(eeg_encoder, img_encoder, data_loader, device="cuda:0", retu
                 img_embeddings_batch = img_encoder(img)
             else:
                 img_embeddings_batch = img
+            img_embeddings_batch = img_embeddings_batch - torch.mean(img_embeddings_batch, dim=-1, keepdim=True)
             img_embeddings_batch = F.normalize(img_embeddings_batch, p=2, dim=-1)
-            sim_img = (img_embeddings_batch @ img_embeddings.t()).softmax(dim=-1)
+            sim_img = (img_embeddings_batch @ img_embeddings.t())
             _, tt_label = sim_img.topk(1)
-
             if return_subject_id:
                 eeg_embeddings = eeg_encoder(eeg, subject_id)
             else:
@@ -120,9 +145,8 @@ def retrieve_images(eeg_encoder, img_encoder, data_loader, device="cuda:0", retu
             eeg_embeddings = eeg_embeddings - torch.mean(eeg_embeddings, dim=-1, keepdim=True)
             eeg_embeddings = F.normalize(eeg_embeddings, p=2, dim=-1)
 
-            similarity = (eeg_embeddings @ img_embeddings.t()).softmax(dim=-1)
+            similarity = (eeg_embeddings @ img_embeddings.t())
             similarity_values, indices = similarity.topk(5)
-
             tt_label = tt_label.view(-1, 1)
 
             total += y.size(0)
@@ -130,9 +154,8 @@ def retrieve_images(eeg_encoder, img_encoder, data_loader, device="cuda:0", retu
             top3 += (tt_label == indices[:, :3]).sum().item()
             top5 += (tt_label == indices).sum().item()
 
-            top1_labels.extend(indices[:, :1].tolist())
-            top3_labels.extend(indices[:, :3].tolist())
             top5_labels.extend(indices[:, :5].tolist())
+            top5_sim_values.extend(similarity_values[:, :5].tolist())
 
         top1_acc = float(top1) / float(total)
         top3_acc = float(top3) / float(total)
@@ -140,10 +163,10 @@ def retrieve_images(eeg_encoder, img_encoder, data_loader, device="cuda:0", retu
 
     print('The test Top1-%.6f, Top3-%.6f, Top5-%.6f' % (top1_acc, top3_acc, top5_acc))
 
-    return top1_acc, top3_acc, top5_acc, top1_labels, top3_labels, top5_labels
+    return top1_acc, top3_acc, top5_acc, top5_labels, top5_sim_values
 
 
-def visualize_things_eeg_images(query_label, retrieved_labels_a, retrieved_labels_b, data_path, save_path=None):
+def visualize_things_eeg_images(query_label, retrieved_labels_a, retrieved_labels_b, retrieved_vals_a, retrieved_vals_b, data_path, save_path=None):
     """
     Visualizes the query image and retrieved images from two models in a single plot for comparison.
 
@@ -205,7 +228,7 @@ def visualize_things_eeg_images(query_label, retrieved_labels_a, retrieved_label
     query_ax = fig.add_subplot(1, total_columns, 1)
     query_ax.imshow(query_image)
     query_ax.axis("off")
-    query_ax.set_title("Query Image", fontsize=14)
+    query_ax.set_title("Query Image", fontsize=16)
 
     # Disable the original first column axes
     axes[0, 0].remove()
@@ -216,7 +239,7 @@ def visualize_things_eeg_images(query_label, retrieved_labels_a, retrieved_label
         if i < len(retrieved_images_a):
             axes[0, i + 1].imshow(retrieved_images_a[i])
             axes[0, i + 1].axis("off")
-            axes[0, i + 1].set_title(f"Dreamsim Model - {i + 1}", fontsize=14)
+            axes[0, i + 1].set_title(f"Dreamsim - {retrieved_vals_a[i]:.2f}", fontsize=16)
         else:
             axes[0, i + 1].axis("off")
 
@@ -225,7 +248,7 @@ def visualize_things_eeg_images(query_label, retrieved_labels_a, retrieved_label
         if i < len(retrieved_images_b):
             axes[1, i + 1].imshow(retrieved_images_b[i])
             axes[1, i + 1].axis("off")
-            axes[1, i + 1].set_title(f"Base Model - {i + 1}", fontsize=14)
+            axes[1, i + 1].set_title(f"Base Model - {retrieved_vals_b[i]:.2f}", fontsize=16)
         else:
             axes[1, i + 1].axis("off")
 
@@ -250,6 +273,9 @@ if __name__ == "__main__":
     save_path = os.path.join(args.save_path, save_dir)
     os.makedirs(save_path, exist_ok=True)
 
+    model_path_aligned = os.path.join(args.model_path, model_name_mapping[args.img_encoder_aligned], f"sub-{args.subject_id:02}", "models")
+    model_path_noalign = os.path.join(args.model_path, model_name_mapping[args.img_encoder_noalign], f"sub-{args.subject_id:02}", "models")
+
     data_loader_aligned, ds_configs = load_data(
         dataset_name=args.dataset, 
         subject_id=args.subject_id, 
@@ -267,28 +293,32 @@ if __name__ == "__main__":
         device_type=device)
 
     brain_encoder_aligned = load_brain_encoder(
-        args.model_path_aligned,
+        model_path_aligned,
         args.brain_encoder,
         embedding_size=model_configs[args.img_encoder_aligned]['embed_dim'],
+        dataset_name=args.dataset,
+        seed=args.seed,
         device=device,
         **ds_configs)
 
     brain_encoder_noalign = load_brain_encoder(
-        args.model_path_noalign,
+        model_path_noalign,
         args.brain_encoder,
         embedding_size=model_configs[args.img_encoder_noalign]['embed_dim'],
+        dataset_name=args.dataset,
+        seed=args.seed,
         device=device,
         **ds_configs)
 
     print("Aligned model")
-    _, _, _, _, _, top5_aligned = retrieve_images(
+    _, _, _, top5_aligned, top5_simvals_aligned = retrieve_images(
         brain_encoder_aligned, 
         None, 
         data_loader_aligned, 
         device=device)
 
     print("No align model")
-    _, _, _, _, _, top5_noalign = retrieve_images(
+    _, _, _, top5_noalign, top5_simvals_noalign = retrieve_images(
         brain_encoder_noalign, 
         None, 
         data_loader_noalign, 
@@ -301,6 +331,8 @@ if __name__ == "__main__":
             query_label, 
             retrieved_aligned, 
             retrieved_noalign,
+            top5_simvals_aligned[query],
+            top5_simvals_noalign[query],
             os.path.join(args.data_path, "things_eeg_2", 'images', 'test_images'), 
             save_path=os.path.join(save_path, f"query_{query}_retrieved.png"))
     
