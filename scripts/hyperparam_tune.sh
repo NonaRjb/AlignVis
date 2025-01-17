@@ -9,17 +9,17 @@
 #SBATCH --mail-user nonar@kth.se
 #SBATCH --output /proj/rep-learning-robotics/users/x_nonra/alignvis/logs/%A_%a_slurm.out
 #SBATCH --error  /proj/rep-learning-robotics/users/x_nonra/alignvis/logs/%A_%a_slurm.err
-#SBATCH --array=0-15 # Total combinations of temperatures and batch sizes
+#SBATCH --array=0-11 # Total combinations of temperatures and batch sizes
 
-CONTAINER=/proj/rep-learning-robotics/users/x_nonra/containers/eeg_torch_container.sif
+CONTAINER=/proj/rep-learning-robotics/users/x_nonra/containers/alignvis.sif
 save_path=/proj/rep-learning-robotics/users/x_nonra/data/
 data_path=/proj/rep-learning-robotics/users/x_nonra/alignvis/data
 experiment="hyperparam_tune"
 img_enc="dreamsim_clip_vitb32"
 dataset="things-eeg-2"
 
-temperatures=(0.04 0.07 0.1 0.5)
-batch_sizes=(64 128 256 512)
+temperatures=(0.04 0.07 0.1)
+batch_sizes=(128 256 512 1024)
 
 temp_idx=$((SLURM_ARRAY_TASK_ID / ${#batch_sizes[@]}))
 batch_idx=$((SLURM_ARRAY_TASK_ID % ${#batch_sizes[@]}))
@@ -45,7 +45,7 @@ apptainer exec --nv $CONTAINER python src/train_brain_clip.py \
   --separate_test \
   --dataset "$dataset" \
   --subject_id 1 \
-  --eeg_enc "eegnet" \
+  --eeg_enc "eegconformer" \
   --img_enc "$img_enc" \
   --epoch 200 \
   --experiment "$experiment" \
@@ -53,7 +53,7 @@ apptainer exec --nv $CONTAINER python src/train_brain_clip.py \
   --downstream "retrieval" \
   -b "$batch_size" \
   --n_workers 8 \
-  --lr 0.01 \
+  --lr 0.0002 \
   --warmup 0 \
   --seed 42 \
   --temperature "$temperature" \

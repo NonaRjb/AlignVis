@@ -21,6 +21,14 @@ model_name_mapping = {
     'CLIP_ViT-B32_noalign': 'CLIP_ViT-B32_noalign',
     'dreamsim_synclr_vitb16': 'dreamsim_synclr_vitb16',
     'dreamsim_synclr_vitb16_noalign': 'dreamsim_synclr_vitb16_noalign',
+    'DINO_ViT-B16_noalign': 'DINO_ViT-B16_noalign',
+    'dreamsim_dino_vitb16': 'dreamsim_DINO_ViT-B16',
+    'DINOv2_ViT-B14_noalign': 'DINOv2_ViT-B14_noalign',
+    'dreamsim_dinov2_vitb14': 'dreamsim_DINOv2_ViT-B14',
+    'dreamsim_ensemble': 'dreamsim_ensemble',
+    'dreamsim_ensemble_noalign': 'dreamsim_ensemble_noalign',
+    'OpenCLIP_ViT-B32_laion400m_noalign': "OpenCLIP_ViT-B32_noalign",
+    'dreamsim_open_clip_vitb32': "dreamsim_OpenCLIP_ViT-B32",
 }
 
 
@@ -228,7 +236,7 @@ def visualize_things_eeg_images(query_label, retrieved_labels_a, retrieved_label
     query_ax = fig.add_subplot(1, total_columns, 1)
     query_ax.imshow(query_image)
     query_ax.axis("off")
-    query_ax.set_title("Query Image", fontsize=16)
+    query_ax.set_title("Query Image", fontsize=32, fontweight='bold')
 
     # Disable the original first column axes
     axes[0, 0].remove()
@@ -239,7 +247,7 @@ def visualize_things_eeg_images(query_label, retrieved_labels_a, retrieved_label
         if i < len(retrieved_images_a):
             axes[0, i + 1].imshow(retrieved_images_a[i])
             axes[0, i + 1].axis("off")
-            axes[0, i + 1].set_title(f"Dreamsim - {retrieved_vals_a[i]:.2f}", fontsize=16)
+            axes[0, i + 1].set_title(f"Dreamsim - {retrieved_vals_a[i]:.2f}", fontsize=32, fontweight='bold')
         else:
             axes[0, i + 1].axis("off")
 
@@ -248,7 +256,7 @@ def visualize_things_eeg_images(query_label, retrieved_labels_a, retrieved_label
         if i < len(retrieved_images_b):
             axes[1, i + 1].imshow(retrieved_images_b[i])
             axes[1, i + 1].axis("off")
-            axes[1, i + 1].set_title(f"Base Model - {retrieved_vals_b[i]:.2f}", fontsize=16)
+            axes[1, i + 1].set_title(f"Base Model - {retrieved_vals_b[i]:.2f}", fontsize=32, fontweight='bold')
         else:
             axes[1, i + 1].axis("off")
 

@@ -27,6 +27,14 @@ model_name_mapping = {
     'CLIP_ViT-B32_noalign': 'CLIP_ViT-B32_noalign',
     'dreamsim_synclr_vitb16': 'dreamsim_synclr_vitb16',
     'dreamsim_synclr_vitb16_noalign': 'dreamsim_synclr_vitb16_noalign',
+    'DINO_ViT-B16_noalign': 'DINO_ViT-B16_noalign',
+    'dreamsim_dino_vitb16': 'dreamsim_DINO_ViT-B16',
+    'DINOv2_ViT-B14_noalign': 'DINOv2_ViT-B14_noalign',
+    'dreamsim_dinov2_vitb14': 'dreamsim_DINOv2_ViT-B14',
+    'dreamsim_ensemble': 'dreamsim_ensemble',
+    'dreamsim_ensemble_noalign': 'dreamsim_ensemble_noalign',
+    'OpenCLIP_ViT-B32_laion400m_noalign': "OpenCLIP_ViT-B32_noalign",
+    'dreamsim_open_clip_vitb32': "dreamsim_OpenCLIP_ViT-B32",
 }
 
 

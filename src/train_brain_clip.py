@@ -24,6 +24,7 @@ from src import downstream
 
 model_configs = {
         'eegnet': {},
+        'eegconformer': {},
         'nice': {'emb_size': 40, 'embedding_dim': 1440, 'drop_proj': 0.5},
         'atms': {},
         'lstm': {'lstm_size': 128, 'lstm_layers': 1},

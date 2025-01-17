@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torchvision
 from collections import OrderedDict
-# from braindecode.models import EEGConformer
+from braindecode.models import EEGConformer
 from torchvision.models.feature_extraction import create_feature_extractor, get_graph_node_names
 from src.brain_architectures import EEGNet, NICE, BrainMLP, ResNet1d, lstm
 
@@ -58,28 +58,28 @@ class BrainEncoder(nn.Module): # TODO: now every architecture has a classificati
             print(get_graph_node_names(self.brain_backbone))
             self.return_node = 'projector.2'
         
-        # elif backbone == 'eegconformer':
-        #     self.brain_backbone = EEGConformer(
-        #         n_outputs=None, 
-        #         n_chans=n_channels, 
-        #         n_filters_time=40, 
-        #         filter_time_length=10, 
-        #         pool_time_length=25, 
-        #         pool_time_stride=5, 
-        #         drop_prob=0.25, 
-        #         att_depth=2, 
-        #         att_heads=1, 
-        #         att_drop_prob=0.5, 
-        #         final_fc_length=1760, 
-        #         return_features=False, 
-        #         n_times=None, 
-        #         chs_info=None, 
-        #         input_window_seconds=None, 
-        #         n_classes=1024, # fixed embedding size 
-        #         input_window_samples=n_samples, 
-        #         add_log_softmax=True)
-        #     self.feature_dim = 1024
-        #     print(get_graph_node_names(self.brain_backbone))
+        elif backbone == 'eegconformer':
+            self.brain_backbone = EEGConformer(
+                n_outputs=None, 
+                n_chans=n_channels, 
+                n_filters_time=40, 
+                filter_time_length=10, 
+                pool_time_length=25, 
+                pool_time_stride=5, 
+                drop_prob=0.25, 
+                att_depth=2, 
+                att_heads=1, 
+                att_drop_prob=0.5, 
+                final_fc_length=1760, 
+                return_features=False, 
+                n_times=None, 
+                chs_info=None, 
+                input_window_seconds=None, 
+                n_classes=1024, # fixed embedding size 
+                input_window_samples=n_samples, 
+                add_log_softmax=True)
+            self.feature_dim = 1024
+            # print(get_graph_node_names(self.brain_backbone))
         
         # elif backbone == 'atms':
         #     print("Using ATMS backbone")
@@ -118,7 +118,7 @@ class BrainEncoder(nn.Module): # TODO: now every architecture has a classificati
         else:
             raise NotImplementedError
         
-        if 'subj' not in backbone and 'atm' not in backbone:
+        if 'subj' not in backbone and 'atm' not in backbone and 'eegconformer' not in backbone:
             self.brain_backbone = create_feature_extractor(self.brain_backbone, return_nodes=[self.return_node])
         print("feature dim = ", self.feature_dim)
         
@@ -126,10 +126,12 @@ class BrainEncoder(nn.Module): # TODO: now every architecture has a classificati
 
     def forward(self, x, subject_id=None):
     
-        if "resnet1d" in self.backbone_type or 'atm' in self.backbone_type:
+        if "resnet1d" in self.backbone_type or 'atm' in self.backbone_type or 'eegconformer' in self.backbone_type:
             x = x.squeeze(1)
         if "subj" in self.backbone_type or 'atm' in self.backbone_type:
             out = self.brain_backbone(x, subject_id)
+        elif "eegconformer" in self.backbone_type:
+            out = self.brain_backbone(x)
         else:
             out = self.brain_backbone(x)[self.return_node]
         out = out.view(out.size(0), -1)
