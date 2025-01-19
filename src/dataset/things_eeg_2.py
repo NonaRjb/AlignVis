@@ -73,7 +73,7 @@ class ThingsEEG2(Dataset):
             labels = [int(l.split("_")[0])-1 for l in tmp_labels]
 
             self.eeg_data_list.append(subject_eeg_data)
-            self.subj_list.extend([str(sid)]*len(labels))
+            self.subj_list.extend([sid]*len(labels))
             self.labels_list.extend(labels)
         
         # Concatenate all subjects' EEG data

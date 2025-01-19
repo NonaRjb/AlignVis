@@ -130,7 +130,9 @@ if __name__ == "__main__":
     print(args)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
-
+    os.makedirs(args.save_path, exist_ok=True)
+    save_path = os.path.join(args.save_path, f"{args.img_encoder}_{args.brain_encoder}")
+    os.makedirs(save_path, exist_ok=True)
     seed_everything(42)
 
     heatmaps = {}
@@ -167,7 +169,7 @@ if __name__ == "__main__":
             x, y = data
             x = x.to(device)
             y = y.to(device)
-            attn_map = gradCAM(brain_encoder, x, y, "brain_backbone.encoder.0.tsconv.3")    # brain_backbone.encoder.0.projection.0
+            attn_map = gradCAM(brain_encoder, x, y, "brain_backbone.encoder.0.projection.0")    # brain_backbone.encoder.0.projection.0  brain_backbone.encoder.0.tsconv.3
             attn_map = attn_map.squeeze().detach().cpu().numpy()
             # attn_map = grad_cam_model.generate_heatmap(x, y).squeeze()
             if i not in heatmaps.keys():
@@ -181,7 +183,10 @@ if __name__ == "__main__":
     hm = {key: np.mean(np.array(heatmaps[key]), axis=0) for key in heatmaps.keys()}
     ins = {key: np.mean(np.array(inputs[key]), axis=0) for key in inputs.keys()}
     for i, k in enumerate(hm.keys()):
-        viz_attn(ins[k], hm[k], blur=False, ch_names=ds_configs['ch_names'], save_path=os.path.join(args.save_path, f"heatmap_{args.img_encoder}_{i}.png"))
+        viz_attn(
+            ins[k], hm[k], blur=False, ch_names=ds_configs['ch_names'], 
+            save_path=os.path.join(save_path, f"heatmap_{args.img_encoder}_{i}.png"),
+            title=f"GradCAM for EEG Responses to Input {k}")
         # plt.imshow(hm[k], cmap="hot")
         # plt.savefig(os.path.join(args.save_path, f"heatmap_{args.img_encoder}_{i}.png"))
     print("Heatmaps generated")

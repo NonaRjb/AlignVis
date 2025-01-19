@@ -88,7 +88,8 @@ class BimodalTrainer:
                 if self.return_subject_id:
                     eeg, image = data[0]
                     subject_id = data[1]
-                    subject_id = subject_id.to(self.device, non_blocking=True)
+                    subject_id = torch.tensor(subject_id, dtype=torch.long).to(self.device, non_blocking=True)
+                    # subject_id = subject_id.to(self.device, non_blocking=True)
                 else:
                     eeg, image = data
                 eeg, image = eeg.to(self.device, non_blocking=True), image.to(self.device, non_blocking=True)

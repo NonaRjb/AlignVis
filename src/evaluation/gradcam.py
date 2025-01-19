@@ -75,21 +75,22 @@ def getAttMap(img, attn_map, blur=True):
             (attn_map**0.7)*cmap(attn_map)[:, :, 0]
     return attn_map
 
-def viz_attn(img, attn_map, blur=True, ch_names=None, save_path=None):
-    _, axes = plt.subplots(1, 1, figsize=(16, 12), dpi=300)
+def viz_attn(img, attn_map, blur=True, ch_names=None, save_path=None, title='EEG Signal'):
+    _, axes = plt.subplots(1, 1, figsize=(20, 18), dpi=300)
     # axes[0].imshow(img)
-    img = img*10
+    img = img*1000
     plot_multivariate_time_series(
         img, 
         ax=axes, 
         attn_map=attn_map, 
         blur=blur, 
-        vertical_offset=1.1*img.max(), 
+        vertical_offset=120, 
         ch_names=ch_names,
-        title='EEG Signal')
+        title=title)
     # axes[1].imshow(getAttMap(img, attn_map, blur))
     # for ax in axes:
     # axes.axis("off")
+    plt.subplots_adjust(left=0.08, right=0.97, top=0.95, bottom=0.05)
     if save_path:
         plt.savefig(save_path)
     else:  
@@ -114,7 +115,7 @@ def plot_multivariate_time_series(data, ax=None, attn_map=None, blur=False, vert
     # Validate input
     if data.ndim != 2:
         raise ValueError("Input data must be a 2D array with shape (channels, timepoints).")
-
+    print("vertical_offset:", vertical_offset)
     channels, timepoints = data.shape
 
     if attn_map is not None:
@@ -131,31 +132,33 @@ def plot_multivariate_time_series(data, ax=None, attn_map=None, blur=False, vert
         fig, ax = plt.subplots(figsize=(12, 8))
 
     for i in range(channels):
-        ax.plot(data[i] + i * vertical_offset, label=f'Channel {i+1}', linewidth=0.5)
+        ax.plot(data[i] + i * vertical_offset, label=f'Channel {i+1}', linewidth=1.2, alpha=0.7)
         
         # Overlay attention map if provided
         if attn_map is not None:
-            alpha = 0.8  # Transparency for the attention overlay
+            alpha = 1.0  # Transparency for the attention overlay
             ax.fill_between(
                 range(timepoints),
-                data[i] + i * vertical_offset - 0.5 * attn_map[i] * vertical_offset,  # Baseline
-                data[i] + i * vertical_offset + 0.5 * attn_map[i] * vertical_offset,  # Signal
+                data[i] + i * vertical_offset - 0.7 * attn_map[i] * vertical_offset,  # Baseline
+                data[i] + i * vertical_offset + 0.7 * attn_map[i] * vertical_offset,  # Signal
                 where=attn_map[i] > 0,  # Highlight where attention is non-zero
                 color='red',
                 alpha=alpha * attn_map[i]
             )
 
     # Add labels, grid, and legend
-    ax.set_xlabel('Time (ms)')
-    ax.set_ylabel('Channels')
+    ax.set_xlabel('Time (ms)', fontsize=18, fontweight='bold')
+    ax.set_ylabel('Channels', fontsize=18, fontweight='bold')
     if ch_names is not None:
         ax.set_yticks(np.arange(channels) * vertical_offset)
-        ax.set_yticklabels(ch_names)
+        ax.set_yticklabels(ch_names, fontweight='bold')
     # Set x-axis to time in milliseconds
     time_in_ms = np.linspace(0, timepoints / sampling_frequency * 1000, timepoints)
     ax.set_xticks(np.linspace(0, timepoints, 11))  # 11 evenly spaced ticks
     ax.set_xticklabels([f"{t:.0f}" for t in np.linspace(0, time_in_ms[-1], 11)])
-    ax.set_title(title)
+    ax.tick_params(axis='x', labelsize=16)
+    ax.tick_params(axis='y', labelsize=16)
+    ax.set_title(title, fontsize=20, fontweight='bold')
     ax.grid(True, alpha=0.5)
 
 

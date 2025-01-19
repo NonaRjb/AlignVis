@@ -14,11 +14,11 @@
 CONTAINER=/proj/rep-learning-robotics/users/x_nonra/containers/alignvis.sif
 save_path=/proj/rep-learning-robotics/users/x_nonra/data/
 data_path=/proj/rep-learning-robotics/users/x_nonra/alignvis/data
-checkpoint="/proj/rep-learning-robotics/users/x_nonra/data/nice_things-eeg-2_cross_subject/dreamsim_ensemble/sub-10/models/nice_things-eeg-2_seed7_56.pth"
+checkpoint="/proj/rep-learning-robotics/users/x_nonra/data/nice_things-eeg-2_cross_subject/dreamsim_ensemble_noalign/sub-10/models/nice_things-eeg-2_seed42_59.pth"
 experiment="nice_things-eeg-2_cross_subject"
-img_enc="dreamsim_ensemble"
+img_enc="dreamsim_ensemble_noalign"
 dataset="things-eeg-2"
-seeds=(7) # Array of seeds 7 42 191 2025 96723
+seeds=(42) # Array of seeds 7 42 191 2025 96723
 subject_id=10
 subject_list=$(seq 1 10 | grep -v "^$subject_id$")
 # Convert the newline-separated list into space-separated integers

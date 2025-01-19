@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #SBATCH -A berzelius-2024-324
-#SBATCH --mem 800GB
+#SBATCH --mem 100GB
 #SBATCH --gpus=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH -t 2-00:00:00
+#SBATCH -t 05:00:00
 #SBATCH --mail-type FAIL
 #SBATCH --mail-user nonar@kth.se
 #SBATCH --output /proj/rep-learning-robotics/users/x_nonra/alignvis/logs/%A_%a_slurm.out
@@ -45,7 +45,7 @@ apptainer exec --nv $CONTAINER python src/train_brain_clip.py \
   --separate_test \
   --dataset "$dataset" \
   --subject_id 1 \
-  --eeg_enc "eegconformer" \
+  --eeg_enc "atms" \
   --img_enc "$img_enc" \
   --epoch 200 \
   --experiment "$experiment" \
@@ -57,4 +57,5 @@ apptainer exec --nv $CONTAINER python src/train_brain_clip.py \
   --warmup 0 \
   --seed 42 \
   --temperature "$temperature" \
-  --scheduler "cosine"
+  --scheduler "cosine" \
+  --return_subject_id

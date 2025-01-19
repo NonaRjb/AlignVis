@@ -8,7 +8,7 @@ import torchvision
 from collections import OrderedDict
 from braindecode.models import EEGConformer
 from torchvision.models.feature_extraction import create_feature_extractor, get_graph_node_names
-from src.brain_architectures import EEGNet, NICE, BrainMLP, ResNet1d, lstm
+from src.brain_architectures import EEGNet, NICE, BrainMLP, ResNet1d, lstm, ATMS
 
 
 class BrainEncoder(nn.Module): # TODO: now every architecture has a classification layer -> embedding should be extracted from penultimate layer.
@@ -81,13 +81,13 @@ class BrainEncoder(nn.Module): # TODO: now every architecture has a classificati
             self.feature_dim = 1024
             # print(get_graph_node_names(self.brain_backbone))
         
-        # elif backbone == 'atms':
-        #     print("Using ATMS backbone")
-        #     self.brain_backbone = eeg_architectures.ATMS(num_latents=embed_dim)
-        #     if self.checkpoint:
-        #         self.brain_backbone.load_state_dict(self.checkpoint)
-        #     self.feature_dim = embed_dim
-        #     self.return_node = 'projector.2'
+        elif backbone == 'atms':
+            print("Using ATMS backbone")
+            self.brain_backbone = ATMS(num_latents=embed_dim)
+            if self.checkpoint:
+                self.brain_backbone.load_state_dict(self.checkpoint)
+            self.feature_dim = embed_dim
+            self.return_node = 'projector.2'
         
         elif backbone == 'lstm':
             self.brain_backbone = lstm(input_size=n_channels, lstm_size=kwargs['lstm_size'],
