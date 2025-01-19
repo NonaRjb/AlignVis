@@ -178,8 +178,7 @@ if __name__ == "__main__":
             else:
                 heatmaps[str(i)].append(attn_map)
                 inputs[str(i)].append(x.squeeze().detach().cpu().numpy())
-            if i == 10:
-                break
+            
     hm = {key: np.mean(np.array(heatmaps[key]), axis=0) for key in heatmaps.keys()}
     ins = {key: np.mean(np.array(inputs[key]), axis=0) for key in inputs.keys()}
     for i, k in enumerate(hm.keys()):
