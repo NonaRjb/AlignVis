@@ -29,6 +29,16 @@ model_name_mapping = {
     'dreamsim_ensemble_noalign': 'dreamsim_ensemble_noalign',
     'OpenCLIP_ViT-B32_laion400m_noalign': "OpenCLIP_ViT-B32_noalign",
     'dreamsim_open_clip_vitb32': "dreamsim_OpenCLIP_ViT-B32",
+    'gLocal_clip_vit-l-14': 'glocal_CLIP_ViT-L14',
+    'CLIP_ViT-L14_noalign': 'CLIP_ViT-L14_noalign',
+    'gLocal_dino-vit-base-p8': 'gLocal_DINO_ViT-B8',
+    'DINO_ViT-B8_noalign': 'DINO_ViT-B8_noalign',
+    'gLocal_dino-vit-base-p16': 'gLocal_DINO_ViT-B16',
+    'DINO_ViT-B16_noalign': 'DINO_ViT-B16_noalign',
+    'gLocal_openclip_vit-l-14_laion400m_e32': 'gLocal_OpenCLIP_ViT-L14',
+    'OpenCLIP_ViT-L14_laion400m_noalign': 'OpenCLIP_ViT-L14_noalign',
+    'gLocal_clip_rn50': 'gLocal_clip_rn50',
+    'gLocal_clip_rn50_noalign': 'gLocal_clip_rn50_noalign',
 }
 
 
@@ -47,6 +57,7 @@ def parse_args():
     parser.add_argument('--split', type=str, default='train')
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--dataset', type=str, default='things-eeg-2')
+    parser.add_argument('--use_train', action='store_true')
     return parser.parse_args()
 
 
@@ -109,6 +120,27 @@ def load_data(dataset_name, subject_id, data_path, img_encoder, seed_val=42, spl
     return data_loader, ds_configs
 
 
+def load_train_images(data_path, subject_id, img_encoder, split='train', normalize=True):
+
+    data_path = os.path.join(data_path, 'things_eeg_2')
+
+    img_parent_dir  = os.path.join(data_path, 'image_embeddings')
+    img_metadata = np.load(os.path.join(img_parent_dir, 'image_metadata.npy'),
+	        allow_pickle=True).item()
+    img_concepts = img_metadata['test_img_concepts'] if split == 'test' else img_metadata['train_img_concepts']
+    img_files = img_metadata['test_img_files'] if split == 'test' else img_metadata['train_img_files']
+
+    # load images
+    images = []
+    for i in range(len(img_files)):
+        img_file = os.path.join(img_parent_dir, 'training_images' if split == 'train' else 'test_images', 
+                img_concepts[i], img_files[i].replace(".jpg", f"_{img_encoder}.npy"))
+        img = np.load(img_file)
+        images.append(img)
+    images = np.array(images)
+    return images
+
+
 def retrieve_images(eeg_encoder, img_encoder, data_loader, device="cuda:0", return_subject_id=False, **kwargs):
 
     eeg_encoder.eval()
@@ -116,7 +148,12 @@ def retrieve_images(eeg_encoder, img_encoder, data_loader, device="cuda:0", retu
     if img_encoder is not None:
         img_encoder.eval()
 
+    train_images = kwargs['train_images'] if 'train_images' in kwargs.keys() else None
+    
     img_embeddings, _ = get_embeddings(img_encoder, data_loader, modality="img", return_subject_id=return_subject_id, device=device)
+    if train_images is not None:
+        train_images = (train_images - np.mean(train_images, axis=-1, keepdims=True)) / np.linalg.norm(train_images, axis=-1, ord=2, keepdims=True) 
+        img_embeddings = np.vstack((img_embeddings, train_images.squeeze()))
     img_embeddings = torch.from_numpy(img_embeddings).to(device)
 
     total = 0
@@ -187,13 +224,27 @@ def visualize_things_eeg_images(query_label, retrieved_labels_a, retrieved_label
     """
     def get_image_path(label):
         # Find the folder corresponding to the label by splitting at the first underscore
-        for folder in os.listdir(data_path):
-            folder_id = int(folder.split('_', 1)[0]) - 1
-            if folder_id == label:
-                folder_path = os.path.join(data_path, folder)
-                images = os.listdir(folder_path)
-                if images:
-                    return os.path.join(folder_path, images[0])
+        if label > 199: 
+            label = label - 200
+            img_num = label % 10 + 1
+            folder_num = label // 10
+            new_data_path = data_path.replace('test_images', 'training_images')
+            for folder in os.listdir(new_data_path):
+                folder_id = int(folder.split('_', 1)[0]) - 1
+                if folder_id == folder_num:
+                    for im in os.listdir(os.path.join(new_data_path, folder)):
+                        match = re.search(r'_(\d+)', im)
+                        img_id = int(match.group(1))
+                        if img_num == img_id:
+                            return os.path.join(new_data_path, folder, im)
+        else:
+            for folder in os.listdir(data_path):
+                folder_id = int(folder.split('_', 1)[0]) - 1
+                if folder_id == label:
+                    folder_path = os.path.join(data_path, folder)
+                    images = os.listdir(folder_path)
+                    if images:
+                        return os.path.join(folder_path, images[0])
         return None
 
     # Get the query image path
@@ -247,7 +298,7 @@ def visualize_things_eeg_images(query_label, retrieved_labels_a, retrieved_label
         if i < len(retrieved_images_a):
             axes[0, i + 1].imshow(retrieved_images_a[i])
             axes[0, i + 1].axis("off")
-            axes[0, i + 1].set_title(f"Dreamsim - {retrieved_vals_a[i]:.2f}", fontsize=32, fontweight='bold')
+            axes[0, i + 1].set_title(f"HA - {retrieved_vals_a[i]:.2f}", fontsize=32, fontweight='bold')
         else:
             axes[0, i + 1].axis("off")
 
@@ -256,7 +307,7 @@ def visualize_things_eeg_images(query_label, retrieved_labels_a, retrieved_label
         if i < len(retrieved_images_b):
             axes[1, i + 1].imshow(retrieved_images_b[i])
             axes[1, i + 1].axis("off")
-            axes[1, i + 1].set_title(f"Base Model - {retrieved_vals_b[i]:.2f}", fontsize=32, fontweight='bold')
+            axes[1, i + 1].set_title(f"Original - {retrieved_vals_b[i]:.2f}", fontsize=32, fontweight='bold')
         else:
             axes[1, i + 1].axis("off")
 
@@ -300,6 +351,9 @@ if __name__ == "__main__":
         split=args.split,
         device_type=device)
 
+    train_images_aligned = load_train_images(data_path=args.data_path, subject_id=args.subject_id, img_encoder=args.img_encoder_aligned)
+    train_images_noalign = load_train_images(data_path=args.data_path, subject_id=args.subject_id, img_encoder=args.img_encoder_noalign)
+    
     brain_encoder_aligned = load_brain_encoder(
         model_path_aligned,
         args.brain_encoder,
@@ -323,6 +377,7 @@ if __name__ == "__main__":
         brain_encoder_aligned, 
         None, 
         data_loader_aligned, 
+        train_images=train_images_aligned if args.use_train else None,
         device=device)
 
     print("No align model")
@@ -330,6 +385,7 @@ if __name__ == "__main__":
         brain_encoder_noalign, 
         None, 
         data_loader_noalign, 
+        train_images=train_images_noalign if args.use_train else None,
         device=device)
 
     

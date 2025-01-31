@@ -14,9 +14,9 @@
 CONTAINER=/proj/rep-learning-robotics/users/x_nonra/containers/alignvis.sif
 save_path=/proj/rep-learning-robotics/users/x_nonra/data/
 data_path=/proj/rep-learning-robotics/users/x_nonra/alignvis/data
-experiment="atms_things-eeg-2_insubject" # "nice_things-eeg-2_insubject"
-img_enc="DINOv2_ViT-B14_noalign"
-img_enc_noalign="harmonization_resnet50_noalign"
+experiment="nice_things-eeg-2_insubject" # "nice_things-eeg-2_insubject"
+img_enc="harmonization_vgg16_noalign"
+img_enc_noalign="harmonization_levit"
 dataset="things-eeg-2"
 seeds=(7 42 191 2025 96723) # Array of seeds  7 42 191 2025 96723
 
@@ -42,7 +42,7 @@ for seed in "${seeds[@]}"; do
     echo "Running with seed: $seed"
     
     apptainer exec --nv $CONTAINER python src/train_brain_clip.py --data_path "$data_path" --save_path "$save_path" --separate_test \
-    --dataset "$dataset" --subject_id "$subject_id" --eeg_enc "atms" --img_enc "$img_enc" --epoch 80 --experiment "$experiment" --img "embedding" \
-    --downstream "retrieval" -b 128 --n_workers 8 --lr 0.0002 --warmup 0 --seed "$seed" --temperature 0.04 --scheduler "cosine" --return_subject_id &
+    --dataset "$dataset" --subject_id "$subject_id" --eeg_enc "nice" --img_enc "$img_enc" --epoch 50 --experiment "$experiment" --img "embedding" \
+    --downstream "retrieval" -b 128 --n_workers 8 --lr 0.0002 --warmup 0 --seed "$seed" --temperature 0.04 --scheduler "cosine" &
 done
 wait

@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 import os
 import re
 import argparse
+import pickle
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
@@ -35,8 +36,17 @@ model_name_mapping = {
     'dreamsim_ensemble_noalign': 'dreamsim_ensemble_noalign',
     'OpenCLIP_ViT-B32_laion400m_noalign': "OpenCLIP_ViT-B32_noalign",
     'dreamsim_open_clip_vitb32': "dreamsim_OpenCLIP_ViT-B32",
+    'gLocal_clip_vit-l-14': 'glocal_CLIP_ViT-L14',
+    'CLIP_ViT-L14_noalign': 'CLIP_ViT-L14_noalign',
+    'gLocal_dino-vit-base-p8': 'gLocal_DINO_ViT-B8',
+    'DINO_ViT-B8_noalign': 'DINO_ViT-B8_noalign',
+    'gLocal_dino-vit-base-p16': 'gLocal_DINO_ViT-B16',
+    'DINO_ViT-B16_noalign': 'DINO_ViT-B16_noalign',
+    'gLocal_openclip_vit-l-14_laion400m_e32': 'gLocal_OpenCLIP_ViT-L14',
+    'OpenCLIP_ViT-L14_laion400m_noalign': 'OpenCLIP_ViT-L14_noalign',
+    'gLocal_clip_rn50': 'gLocal_clip_rn50',
+    'gLocal_clip_rn50_noalign': 'gLocal_clip_rn50_noalign',
 }
-
 
 def seed_everything(seed_val):
     np.random.seed(seed_val)
@@ -121,7 +131,7 @@ def parse_args():
     parser.add_argument('--img_encoder', type=str, default='dreamsim_clip_vitb32')
     parser.add_argument('--brain_encoder', type=str, default='nice')
     parser.add_argument('--split', type=str, default='test')
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--seed', nargs='+', type=int, default=[42])
     return parser.parse_args()
 
 
@@ -137,57 +147,57 @@ if __name__ == "__main__":
 
     heatmaps = {}
     inputs = {}
-    for subject_id in args.subject_id:
-        
-        data_loader, ds_configs = load_data(
-            dataset_name=args.dataset, 
-            subject_id=subject_id, 
-            data_path=args.data_path, 
-            img_encoder=args.img_encoder, 
-            split=args.split,
-            device_type=device)
-
-        model_path = os.path.join(
-            args.model_path, 
-            model_name_mapping[args.img_encoder], 
-            f"sub-{subject_id:02}",
-            "models")
-
-        brain_encoder = load_brain_encoder(
-            model_path,
-            args.brain_encoder,
-            embedding_size=model_configs[args.img_encoder]['embed_dim'],
-            device=device,
-            dataset_name=args.dataset,
-            seed=args.seed,
-            **ds_configs)
-
-        brain_encoder.eval()
-        # print(brain_encoder)
-        # grad_cam_model = GradCAM(model=brain_encoder, target_layer='brain_backbone.encoder.0.projection.0')
-        for i, (data, l) in enumerate(data_loader):
-            x, y = data
-            x = x.to(device)
-            y = y.to(device)
-            attn_map = gradCAM(brain_encoder, x, y, "brain_backbone.encoder.0.projection.0")    # brain_backbone.encoder.0.projection.0  brain_backbone.encoder.0.tsconv.3
-            attn_map = attn_map.squeeze().detach().cpu().numpy()
-            # attn_map = grad_cam_model.generate_heatmap(x, y).squeeze()
-            if i not in heatmaps.keys():
-                heatmaps[str(i)] = [attn_map]
-                inputs[str(i)] = [x.squeeze().detach().cpu().numpy()]
-            else:
-                heatmaps[str(i)].append(attn_map)
-                inputs[str(i)].append(x.squeeze().detach().cpu().numpy())
+    for seed in args.seed:
+        for sid in args.subject_id:
             
-    hm = {key: np.mean(np.array(heatmaps[key]), axis=0) for key in heatmaps.keys()}
-    ins = {key: np.mean(np.array(inputs[key]), axis=0) for key in inputs.keys()}
-    for i, k in enumerate(hm.keys()):
-        viz_attn(
-            ins[k], hm[k], blur=False, ch_names=ds_configs['ch_names'], 
-            save_path=os.path.join(save_path, f"heatmap_{args.img_encoder}_{i}.png"),
-            title=f"GradCAM for EEG Responses to Input {k}")
-        # plt.imshow(hm[k], cmap="hot")
-        # plt.savefig(os.path.join(args.save_path, f"heatmap_{args.img_encoder}_{i}.png"))
+            data_loader, ds_configs = load_data(
+                dataset_name=args.dataset, 
+                subject_id=sid, 
+                data_path=args.data_path, 
+                img_encoder=args.img_encoder, 
+                split=args.split,
+                device_type=device)
+
+            model_path = os.path.join(
+                args.model_path, 
+                model_name_mapping[args.img_encoder], 
+                f"sub-{sid:02}",
+                "models")
+
+            brain_encoder = load_brain_encoder(
+                model_path,
+                args.brain_encoder,
+                embedding_size=model_configs[args.img_encoder]['embed_dim'],
+                device=device,
+                dataset_name=args.dataset,
+                seed=seed,
+                **ds_configs)
+
+            brain_encoder.eval()
+            for i, (data, l) in enumerate(data_loader):
+                x, y = data
+                x = x.to(device)
+                y = y.to(device)
+                attn_map = gradCAM(brain_encoder, x, y, "brain_backbone.encoder.0.projection.0")    # brain_backbone.encoder.0.projection.0  brain_backbone.encoder.0.tsconv.3
+                attn_map = attn_map.squeeze().detach().cpu().numpy()
+                if str(i) not in heatmaps.keys():
+                    heatmaps[str(i)] = {}
+                    inputs[str(i)] = {}
+                if str(sid) not in heatmaps[str(i)].keys():
+                    heatmaps[str(i)][str(sid)] = [attn_map]
+                    inputs[str(i)][str(sid)] = [x.squeeze().detach().cpu().numpy()]
+                else:
+                    heatmaps[str(i)][str(sid)].append(attn_map)
+                    inputs[str(i)][str(sid)].append(x.squeeze().detach().cpu().numpy())
+    # hm = {key: np.mean(np.array(heatmaps[key]), axis=0) for key in heatmaps.keys()}
+    # ins = {key: np.mean(np.array(inputs[key]), axis=0) for key in inputs.keys()}
+    # for i, k in enumerate(hm.keys()):
+    #     viz_attn(
+    #         ins[k], hm[k], blur=False, ch_names=ds_configs['ch_names'], 
+    #         save_path=os.path.join(save_path, f"heatmap_{args.img_encoder}_{i}.png"),
+    #         title=f"GradCAM for EEG Responses to Input {k}")
+    with open(os.path.join(save_path, "heatmaps.pkl"), "wb") as f:
+        pickle.dump(heatmaps, f)
     print("Heatmaps generated")
 
     

@@ -95,6 +95,7 @@ def viz_attn(img, attn_map, blur=True, ch_names=None, save_path=None, title='EEG
         plt.savefig(save_path)
     else:  
         plt.show()
+    plt.close()
 
 
 def plot_multivariate_time_series(data, ax=None, attn_map=None, blur=False, vertical_offset=10, ch_names=None, sampling_frequency=250, title='Multivariate Time Series'):
@@ -224,6 +225,12 @@ def gradCAM(
 
         grad = hook.gradient.float()
         act = hook.activation.float()
+        if len(grad.shape) < 4:
+            while len(grad.shape) < 4:
+                grad = grad.unsqueeze(0)
+        if len(act.shape) < 4:
+            while len(act.shape) < 4:
+                act = act.unsqueeze(0)
     
         # Global average pool gradient across spatial dimension
         # to obtain importance weights.

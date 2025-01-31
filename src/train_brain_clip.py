@@ -77,6 +77,10 @@ model_configs = {
         'harmonization_resnet50_noalign': {'embed_dim': 2048},
         'harmonization_convnext': {'embed_dim': 768},
         'harmonization_convnext_noalign': {'embed_dim': 768},
+        'harmonization_levit': {'embed_dim': 384},
+        'harmonization_levit_noalign': {'embed_dim': 384},
+        'harmonization_vgg16': {'embed_dim': 4096},
+        'harmonization_vgg16_noalign': {'embed_dim': 4096},
     }
 
 
