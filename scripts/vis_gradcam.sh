@@ -6,7 +6,6 @@
 #SBATCH --cpus-per-task=4
 #SBATCH -t 03:00:00
 #SBATCH --mail-type FAIL
-#SBATCH --mail-user nonar@kth.se
 #SBATCH --output /proj/rep-learning-robotics/users/x_nonra/alignvis/logs/%J_slurm.out
 #SBATCH --error  /proj/rep-learning-robotics/users/x_nonra/alignvis/logs/%J_slurm.err
 
