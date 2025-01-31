@@ -1,6 +1,11 @@
+"""
+Code for the NICE architecture. Borrowed from https://github.com/eeyhsong/NICE-EEG.git. 
+Song, Yonghao, et al. "Decoding Natural Images from EEG for Object Recognition." 
+The Twelfth International Conference on Learning Representations (2024).
+"""
+
 import torch.nn as nn
 from torch import Tensor
-
 
 
 class PatchEmbedding(nn.Module):
