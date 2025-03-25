@@ -9,7 +9,7 @@ from torch import Tensor
 
 
 class PatchEmbedding(nn.Module):
-    def __init__(self, emb_size=40):
+    def __init__(self, emb_size=40, n_channels=63):
         super().__init__()
         # revised from shallownet
         self.tsconv = nn.Sequential(
@@ -17,7 +17,7 @@ class PatchEmbedding(nn.Module):
             nn.AvgPool2d((1, 51), (1, 5)),
             nn.BatchNorm2d(40),
             nn.ELU(),
-            nn.Conv2d(40, 40, (63, 1), (1, 1)),
+            nn.Conv2d(40, 40, (n_channels, 1), (1, 1)),
             nn.BatchNorm2d(40),
             nn.ELU(),
             nn.Dropout(0.5),
@@ -62,7 +62,7 @@ class FlattenHead(nn.Sequential):
 class Enc_eeg(nn.Sequential):
     def __init__(self, emb_size=40, **kwargs):
         super().__init__(
-            PatchEmbedding(emb_size),
+            PatchEmbedding(emb_size, kwargs['n_channels']),
             FlattenHead()
         )
 
@@ -80,9 +80,9 @@ class Proj_eeg(nn.Sequential):
         )
 
 class NICE(nn.Module):
-    def __init__(self, emb_size=40, embedding_dim=1440, proj_dim=768, drop_proj=0.5):
+    def __init__(self, emb_size=40, embedding_dim=1440, proj_dim=768, n_channels=63, drop_proj=0.5):
         super().__init__()
-        self.encoder = Enc_eeg(emb_size)
+        self.encoder = Enc_eeg(emb_size, n_channels=n_channels)
         self.projector = Proj_eeg(embedding_dim, proj_dim, drop_proj)
 
     def forward(self, x: Tensor) -> Tensor:

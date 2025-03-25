@@ -51,7 +51,7 @@ class BrainEncoder(nn.Module): # TODO: now every architecture has a classificati
 
         elif backbone == 'nice':
             print("Using NICE backbone")
-            self.brain_backbone = NICE(emb_size=kwargs['emb_size'], embedding_dim=kwargs['embedding_dim'], proj_dim=embed_dim) # 217360 for MEG and 1440 for EEG
+            self.brain_backbone = NICE(emb_size=kwargs['emb_size'], embedding_dim=kwargs['embedding_dim'], proj_dim=embed_dim, n_channels=n_channels) # 217360 for MEG and 1440 for EEG
             if self.checkpoint:
                 self.brain_backbone.load_state_dict(self.checkpoint)
             self.feature_dim = embed_dim
@@ -173,6 +173,73 @@ class SubjLinear(nn.Module):
             print(f"Subject {subj_id} added successfully!")
 
 
+class BrainClassifier(torch.nn.Module):
+    def __init__(self, model_name, n_channels, n_samples, n_classes, **kwargs):
+        super(BrainClassifier, self).__init__()
+        self.model_name = model_name
+        if model_name == "atms":
+            self.backbone = ATMS(num_latents=kwargs['embed_dim'])
+            self.activation = nn.ReLU()
+            self.classifier = nn.Linear(kwargs['embed_dim'], n_classes)
+            # self.model = nn.Sequential(backbone, activation, classifier)
+        elif model_name == "brain-mlp":
+            self.backbone = BrainMLP(out_dim=kwargs['embed_dim'], in_dim=int(n_channels * n_samples), clip_size=kwargs['embed_dim'])
+            self.activation = nn.ReLU()
+            self.classifier = nn.Linear(kwargs['embed_dim'], n_classes)
+            # self.model = nn.Sequential(backbone, activation, classifier)
+        elif model_name == "resnet1d":
+            net_filter_size = kwargs['net_filter_size'] if 'net_filter_size' in kwargs.keys() else [64, 128, 196, 256, 320] # [16, 16, 32, 32, 64]
+            net_seq_length = kwargs['net_seq_length'] if 'net_seq_length' in kwargs.keys() else [n_samples, 128, 64, 32, 16]
+            backbone = ResNet1d(
+                n_channels=n_channels, 
+                n_samples=n_samples, 
+                net_filter_size=kwargs['net_filter_size'], 
+                net_seq_length=kwargs['net_seq_length'], 
+                n_classes=n_classes
+            )
+            self.model = backbone
+        elif model_name == "lstm":
+            backbone = lstm(input_size=n_channels, lstm_size=kwargs['lstm_size'], lstm_layers=kwargs['lstm_layers'], device=kwargs['device'])
+            self.model = backbone
+        elif model_name == "eegconformer":
+            backbone = EEGConformer(
+                n_channels=n_channels, 
+                n_samples=n_samples, 
+                embed_dim=kwargs['embed_dim'], 
+                n_classes=n_classes
+            )
+            self.model = backbone
+        elif model_name == "nice":
+            self.backbone = NICE(emb_size=kwargs['emb_size'], embedding_dim=kwargs['embedding_dim'], proj_dim=kwargs['embed_dim'])
+            self.activation = nn.ReLU()
+            self.classifier = nn.Linear(kwargs['embed_dim'], n_classes)
+            # self.model = nn.Sequential(backbone, activation, classifier)
+        elif model_name == "eegnet":
+            backbone = EEGNet(n_samples=n_samples, n_channels=n_channels, n_classes=n_classes) 
+            self.model = backbone
+        else: 
+            raise NotImplementedError
+
+    def forward(self, x, subject_id=None):
+        if self.model_name in ["resnet1d", "atms", "eegconformer"]:
+            x = x.squeeze(1)
+        if self.model_name == "atms":
+            if subject_id is None:
+                subject_id = torch.ones(x.shape[0], dtype=torch.long, device=x.device)  # Ensure correct device
+            x = self.backbone(x, subject_id)
+            x = self.activation(x)
+            x = self.classifier(x)
+            return x
+        elif self.model_name in ["brain-mlp", "nice"]:
+            x = self.backbone(x)
+            x = self.activation(x)
+            x = self.classifier(x)
+            return x
+        else:
+            return self.model(x)
+    # def forward(self, x):
+    #     return self.model(x)
+
 
 class MLPHead(nn.Module):
     def __init__(
@@ -180,7 +247,7 @@ class MLPHead(nn.Module):
         input_size,
         n_classes,
         n_layers,
-        hidden_size,
+        hidden_dim,
         **kwargs
         ):
 

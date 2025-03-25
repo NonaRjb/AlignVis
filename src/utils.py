@@ -4,7 +4,7 @@ from tqdm import tqdm
 import json
 import os
 
-from src.dataset import ThingsEEG2_preprocessed, ThingsEEG2, ThingsMEG, SpampinatoDataset
+from src.dataset import ThingsEEG2Processed, ThingsEEG2, ThingsMEG, SpampinatoDataset
 
 
 def save_config(loaded_config, root_path, filename='config_run.json'):
@@ -28,29 +28,38 @@ def load_dataset(dataset_name, data_path, **kwargs):
             load_img=kwargs['load_img']
         )
     elif dataset_name == "things-eeg-preprocessed": #TODO Still not ready to use
+        fs = kwargs['interpolate'] if 'interpolate' in kwargs.keys() and kwargs['interpolate'] is not None else 100
+        new_labels_type = kwargs['new_labels_type'] if 'new_labels_type' in kwargs.keys() else None
+        new_labels_path = kwargs['new_labels_path'] if 'new_labels_path' in kwargs.keys() else None
+        n_samples = fs if 'window' not in kwargs.keys() or kwargs['window'] is None else int((kwargs['window'][1]-kwargs['window'][0])*fs)
         data_configs = {
             "t_l": -0.2,
             "t_h": 0.8,
             "fs": kwargs['interpolate'] if 'interpolate' in kwargs.keys() else 100,  # I have changed this from 100 to 128 in the Dataset description
-            "n_samples": kwargs['interpolate'] if 'interpolate' in kwargs.keys() and kwargs['interpolate'] is not None else 100,
+            "n_samples": n_samples,
             "n_channels": 17 if 'select_channels' not in kwargs.keys()  or kwargs['select_channels'] is None else len(kwargs['select_channels']),
             "n_classes": 1654,
         }
         test = kwargs['test'] if 'test' in kwargs.keys() else False
         print("TEST = ", test)
-        dataset = ThingsEEG2_preprocessed(
+        dataset = ThingsEEG2Processed(
             data_path=data_path,
             subject_id=kwargs['sid'],
             load_img=kwargs['load_img'],
             return_subject_id=kwargs['return_subject_id'],
-            test=test,
+            split=kwargs['split'],
             select_channels=kwargs['select_channels'] if 'select_channels' in kwargs.keys() else None,
-            load_img_embedding=kwargs['load_img_embedding'],
-            img_encoder=kwargs['img_encoder'],
             training_ratio=kwargs['subj_training_ratio'],
+            img_encoder=kwargs['img_encoder'],
+            interpolate=kwargs['interpolate'] if 'interpolate' in kwargs.keys() else None,
+            window=kwargs['window'] if 'window' in kwargs.keys() else None,
+            new_labels_type=new_labels_type,
+            new_labels_path=new_labels_path,
         )
     elif dataset_name == "things-eeg-2":
         fs = kwargs['interpolate'] if 'interpolate' in kwargs.keys() and kwargs['interpolate'] is not None else 251
+        new_labels_type = kwargs['new_labels_type'] if 'new_labels_type' in kwargs.keys() else None
+        new_labels_path = kwargs['new_labels_path'] if 'new_labels_path' in kwargs.keys() else None
         n_samples = fs if 'window' not in kwargs.keys() or kwargs['window'] is None else int((kwargs['window'][1]-kwargs['window'][0])*fs)
         data_configs = {
             "t_l": 0.0,
@@ -73,6 +82,8 @@ def load_dataset(dataset_name, data_path, **kwargs):
             img_encoder=kwargs['img_encoder'],
             interpolate=kwargs['interpolate'] if 'interpolate' in kwargs.keys() else None,
             window=kwargs['window'] if 'window' in kwargs.keys() else None,
+            new_labels_type=new_labels_type,
+            new_labels_path=new_labels_path,
         )
         data_configs['ch_names'] = dataset.channel_names
     elif dataset_name == "things-meg":
@@ -144,6 +155,5 @@ def get_embeddings(model, data_loader, modality="eeg", return_subject_id=False, 
     print(embeddings.shape)
     print(labels)
     return embeddings, labels
-    
 
     

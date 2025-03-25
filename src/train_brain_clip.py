@@ -227,6 +227,9 @@ if __name__ == "__main__":
         if args.dataset == "things-meg":
             model_configs['nice']['embedding_dim'] = 217360
             model_configs['nice']['emb_size'] = 40
+        elif args.dataset == "things-eeg-preprocessed":
+            model_configs['nice']['embedding_dim'] = 240
+            model_configs['nice']['emb_size'] = 40
 
         if args.checkpoint:
             model_configs[brain_enc_name]['subject_ids'] = [str(s) for s in range(1, 11)]

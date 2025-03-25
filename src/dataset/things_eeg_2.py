@@ -5,12 +5,20 @@ sys.path.append("/proj/rep-learning-robotics/users/x_nonra/alignvis")
 from torch.utils.data import Dataset
 from PIL import Image
 from scipy.interpolate import interp1d
+from sklearn.decomposition import PCA
 import numpy as np
 import torch
 import pickle
+import json
 import os
 
 from src.dataset.data_utils import _transform
+
+
+label_type = {
+    'classification': ['color', 'object', 'color_high', 'object_high'],
+    'regression': ['gabor', 'hist', 'wavelet']
+}
 
 
 class ThingsEEG2(Dataset):
@@ -26,6 +34,8 @@ class ThingsEEG2(Dataset):
         img_encoder=None,
         interpolate=None,
         window=None,
+        new_labels_type=None,
+        new_labels_path=None,
         download=False,
         ):
 
@@ -47,11 +57,15 @@ class ThingsEEG2(Dataset):
             subject_id = [subject_id]
         
         # img_data['train_img_concepts'] defines the classes 
-        self.img_parent_dir  = os.path.join(self.data_path, 'images' if load_img == "raw" else 'image_embeddings')
+        self.img_parent_dir  = os.path.join(self.data_path, 'image_embeddings' if load_img == "embedding" else 'images')
         self.img_metadata = np.load(os.path.join(self.img_parent_dir, 'image_metadata.npy'),
 	            allow_pickle=True).item()
         self.img_concepts = self.img_metadata['test_img_concepts'] if self.split == 'test' else self.img_metadata['train_img_concepts']
         self.img_files = self.img_metadata['test_img_files'] if self.split == 'test' else self.img_metadata['train_img_files']
+
+        if new_labels_type is not None and new_labels_type in label_type['classification']:
+            with open(os.path.join(new_labels_path, f'clip_vitb32_{new_labels_type}_{self.split}.json'), "r") as f:
+                new_labels = json.load(f)
 
         self.eeg_data_list = []
         self.labels_list = []
@@ -69,8 +83,20 @@ class ThingsEEG2(Dataset):
             if select_channels:
                 subject_eeg_data = subject_eeg_data[:, :, select_channels, :]
 
-            tmp_labels = self.img_concepts
-            labels = [int(l.split("_")[0])-1 for l in tmp_labels]
+            if new_labels_type is not None:
+                labels = []
+                for i in range(len(self.img_files)):
+                    if new_labels_type in label_type['classification']:
+                        img_file = os.path.join(self.img_parent_dir, 'training_images' if self.split == 'train' else 'test_images', 
+                            self.img_concepts[i], self.img_files[i]) 
+                        labels.append(new_labels[img_file])
+                    else:
+                        img_file = os.path.join(self.img_parent_dir.replace('images', 'img_features'), 'training_images' if self.split == 'train' else 'test_images', 
+                            self.img_concepts[i], self.img_files[i].replace(".jpg", f"_{new_labels_type}.npy")) 
+                        labels.append(np.load(img_file))
+            else:
+                tmp_labels = self.img_concepts
+                labels = [int(l.split("_")[0])-1 for l in tmp_labels]
 
             self.eeg_data_list.append(subject_eeg_data)
             self.subj_list.extend([sid]*len(labels))
@@ -83,6 +109,7 @@ class ThingsEEG2(Dataset):
         if split == 'train' and training_ratio < 1.0:
             self._sample_data()
         print("len(self.eeg_data) = ", len(self.eeg_data))
+        print("number of unique labels = ", len(np.unique(self.labels_list)))
 
     def _sample_data(self):
         """Randomly samples the training data based on the given training_ratio."""
@@ -143,7 +170,7 @@ class ThingsEEG2(Dataset):
             sample = torch.from_numpy(np.mean(eeg, axis=1)).to(torch.float)
             
         label = self.labels_list[item]
-        assert int(self.img_concepts[img_idx].split("_")[0])-1 == label
+        # assert int(self.img_concepts[img_idx].split("_")[0])-1 == label
         # img_file = self.image_files[self.indices[item]].copy()
         if self.return_subject_id:
             return (sample, self.subj_list[item]), label

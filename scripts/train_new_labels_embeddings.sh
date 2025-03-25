@@ -13,9 +13,11 @@
 CONTAINER=/proj/rep-learning-robotics/users/x_nonra/containers/alignvis.sif
 save_path=/proj/rep-learning-robotics/users/x_nonra/data/
 data_path=/proj/rep-learning-robotics/users/x_nonra/alignvis/data
-experiment="test" # "nice_things-eeg-2_insubject"
-img_enc="dreamsim_clip_vitb32"
-img_enc_noalign="harmonization_levit"
+model_path=/proj/rep-learning-robotics/users/x_nonra/data/eeg_models_trained/
+new_label_path=/proj/rep-learning-robotics/users/x_nonra/data/generated_labels
+new_label_type=color_high
+img_encoder="dreamsim_clip_vitb32"
+experiment="new_labels_embedding_clip" # "nice_things-eeg-2_insubject"
 dataset="things-eeg-2"
 seeds=(7 42 191 2025 96723) # Array of seeds  7 42 191 2025 96723
 
@@ -40,8 +42,8 @@ echo "Subject list: $subject_list"
 for seed in "${seeds[@]}"; do
     echo "Running with seed: $seed"
     
-    apptainer exec --nv $CONTAINER python src/train_brain_clip.py --data_path "$data_path" --save_path "$save_path" --separate_test \
-    --dataset "$dataset" --subject_id "$subject_id" --eeg_enc "nice" --img_enc "$img_enc" --epoch 50 --experiment "$experiment" --img "embedding" \
-    --downstream "retrieval" -b 128 --n_workers 8 --lr 0.0002 --warmup 0 --seed "$seed" --temperature 0.04 --scheduler "cosine" --loss clip-loss &
+    apptainer exec --nv $CONTAINER python src/evaluation/classify_embeddings.py --data_path "$data_path" --save_path "$save_path" --checkpoint "$model_path" --new_label_path "$new_label_path" --separate_test \
+    --dataset "$dataset" --subject_id "$subject_id" --test_subject "$subject_id" --eeg_enc "nice" --img_encoder "$img_encoder" --epoch 50 --experiment "$experiment" --new_label_type "$new_label_type" \
+    -b 128 --n_workers 8 --lr 0.0005 --warmup 0 --seed "$seed" --temperature 0.04 --scheduler "cosine" &
 done
 wait
