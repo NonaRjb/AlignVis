@@ -1,7 +1,7 @@
 # Human-Aligned Image Models Improve Visual Decoding from the Brain
 
 <div align="center">
-  <img src="https://github.com/NonaRjb/AlignVis/blob/main/alignment_method.png?raw=true" alt="alt text" width="800"/>
+  <img src="https://github.com/NonaRjb/AlignVis/blob/main/overview.png?raw=true" alt="alt text" width="800"/>
 </div>
 
 ## Summary
