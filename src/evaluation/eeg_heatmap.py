@@ -46,6 +46,16 @@ model_name_mapping = {
     'OpenCLIP_ViT-L14_laion400m_noalign': 'OpenCLIP_ViT-L14_noalign',
     'gLocal_clip_rn50': 'gLocal_clip_rn50',
     'gLocal_clip_rn50_noalign': 'gLocal_clip_rn50_noalign',
+    'harmonization_resnet50': 'harmonization_resnet50',
+    'harmonization_resnet50_noalign': 'harmonization_resnet50_noalign',
+    'harmonization_vitb16': 'harmonization_vitb16',
+    'harmonization_vitb16_noalign': 'harmonization_vitb16_noalign',
+    'harmonization_vgg16': 'harmonization_vgg16',
+    'harmonization_vgg16_noalign': 'harmonization_vgg16_noalign',
+    'harmonization_levit': 'harmonization_levit',
+    'harmonization_levit_noalign': 'harmonization_levit_noalign',
+    'harmonization_convnext': 'harmonization_convnext',
+    'harmonization_convnext_noalign': 'harmonization_convnext_noalign',
 }
 
 def seed_everything(seed_val):

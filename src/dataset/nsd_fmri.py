@@ -35,27 +35,27 @@ class NSD(Dataset):
         self.split = split
         self.img_encoder = img_encoder
 
-        if self.split == "train":
-            self.fmri = np.load(os.path.join(save_path, "nsd_train_fmri_sub" + "{:02d}".format(self.subject_id) + ".npy"), memmap_mode='r')
-            self.images = np.load(os.path.join(save_path ,"nsd_train_stim_sub" + "{:02d}".format(subject_id) + ".npy"), memmap_mode='r')
+        self.fmri = np.load(os.path.join(self.data_path, "processed_data", "sub" + "{:02d}".format(self.subject_id), f"nsd_{self.split}_fmri_sub" + "{:02d}".format(self.subject_id) + ".npy"), mmap_mode='r')
+        if self.load_img == "embedding":
+            self.images = np.load(os.path.join(self.data_path , "image_embeddings", "sub" + "{:02d}".format(self.subject_id), f"{self.split}_{self.img_encoder}.npy"), mmap_mode='r')
         else:
-            self.fmri = np.load(os.path.join(save_path, "nsd_test_fmri_sub" + "{:02d}".format(self.subject_id) + ".npy"), memmap_mode='r')
-            self.images = np.load(os.path.join(save_path ,"nsd_test_stim_sub" + "{:02d}".format(subject_id) + ".npy"), memmap_mode='r')
+            self.images = np.load(os.path.join(self.data_path , "images", "sub" + "{:02d}".format(self.subject_id), f"{self.split}.npy"), mmap_mode='r')
 
 
     def __len__(self):
-        return len(self.img_files)
+        return len(self.fmri)
 
     def __getitem__(self, idx):
-        fmri = torch.from_numpy(self.fmri[idx]).to(torch.float)
+        fmri = torch.from_numpy(self.fmri[idx].copy()).to(torch.float)
 
         if self.load_img == "raw":
-            img = self.images[idx]
+            img = self.images[idx].copy().astype(np.uint8)
             img = Image.fromarray(img)
             img = self.img_transform(img).to(torch.float)
             sample = (fmri, img)
         elif self.load_img == "embedding":
-            raise NotImplementedError
+            img = torch.from_numpy(self.images[idx].copy()).to(torch.float)
+            sample = (fmri, img)
         else:
             sample = fmri
 

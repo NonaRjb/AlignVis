@@ -4,8 +4,19 @@ from tqdm import tqdm
 import json
 import os
 
-from src.dataset import ThingsEEG2Processed, ThingsEEG2, ThingsMEG, SpampinatoDataset
+from src.dataset import ThingsEEG2Processed, ThingsEEG2, ThingsMEG, SpampinatoDataset, NSD
 
+
+nsd_num_voxels = {
+    1: 15724,
+    2: 14278,
+    3: 15226,
+    4: 13153,
+    5: 13039,
+    6: 17907,
+    7: 12682,
+    8: 14386,
+}
 
 def save_config(loaded_config, root_path, filename='config_run.json'):
     with open(os.path.join(root_path, filename), 'w') as file:
@@ -106,6 +117,20 @@ def load_dataset(dataset_name, data_path, **kwargs):
             img_encoder=kwargs['img_encoder'],
             interpolate=kwargs['interpolate'] if 'interpolate' in kwargs.keys() else None,
         )
+    elif dataset_name == "nsd-fmri":
+        data_configs = {
+            "n_samples": nsd_num_voxels[kwargs['sid']],
+            "n_channels": 1,
+            "n_classes": 1,
+        }
+        dataset = NSD(
+            data_path=data_path,
+            subject_id=kwargs['sid'],
+            load_img=kwargs['load_img'],
+            return_subject_id=kwargs['return_subject_id'],
+            split=kwargs['split'],
+            img_encoder=kwargs['img_encoder'],
+        )
     else: 
         raise NotImplementedError
     return dataset, data_configs
@@ -153,7 +178,6 @@ def get_embeddings(model, data_loader, modality="eeg", return_subject_id=False, 
         else:
             np.save("./embeddings.npy", embeddings)
     print(embeddings.shape)
-    print(labels)
     return embeddings, labels
 
     

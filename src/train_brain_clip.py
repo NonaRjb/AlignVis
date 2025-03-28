@@ -42,6 +42,7 @@ model_configs = {
         'OpenCLIP_ViT-L14_laion400m_noalign': {'embed_dim': 768},
         'OpenCLIP_ViT-L14_laion2b_noalign': {'embed_dim': 768},
         'OpenCLIP_ViT-B32_laion400m_noalign': {'embed_dim': 512},
+        'OpenCLIP_ViT-H14_laion2b_noalign': {'embed_dim': 1024},
         'dreamsim_clip_vitb32_768': {'embed_dim': 768},
         'dreamsim_clip_vitb32': {'embed_dim': 512},
         'dreamsim_clip_vitb32_noalign': {'embed_dim': 512},

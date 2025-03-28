@@ -57,7 +57,7 @@ class ThingsEEG2(Dataset):
             subject_id = [subject_id]
         
         # img_data['train_img_concepts'] defines the classes 
-        self.img_parent_dir  = os.path.join(self.data_path, 'image_embeddings' if load_img == "embedding" else 'images')
+        self.img_parent_dir  = os.path.join(self.data_path, 'image_embeddings' if load_img in ["embedding", "recon"] else 'images')
         self.img_metadata = np.load(os.path.join(self.img_parent_dir, 'image_metadata.npy'),
 	            allow_pickle=True).item()
         self.img_concepts = self.img_metadata['test_img_concepts'] if self.split == 'test' else self.img_metadata['train_img_concepts']
@@ -166,6 +166,14 @@ class ThingsEEG2(Dataset):
                 self.img_concepts[img_idx], self.img_files[img_idx]) 
             pair = Image.open(img_file).convert('RGB')
             sample = (torch.from_numpy(np.mean(eeg, axis=1)).to(torch.float), (self.img_transform(pair).to(torch.float)))
+        elif self.load_img == "recon":
+            img_file_retrieve = os.path.join(self.img_parent_dir, 'training_images' if self.split == 'train' else 'test_images', 
+                self.img_concepts[img_idx], self.img_files[img_idx].replace(".jpg", f"_{self.img_encoder}.npy"))
+            img_file_recon = os.path.join(self.img_parent_dir, 'training_images' if self.split == 'train' else 'test_images', 
+                self.img_concepts[img_idx], self.img_files[img_idx].replace(".jpg", "_OpenCLIP_ViT-H14_laion2b_noalign.npy"))
+            pair_retrieve = np.load(img_file_retrieve)
+            pair_recon = np.load(img_file_recon)
+            sample = (torch.from_numpy(np.mean(eeg, axis=1)).to(torch.float), torch.from_numpy(pair_retrieve.squeeze()).to(torch.float), torch.from_numpy(pair_recon.squeeze()).to(torch.float))
         else:
             sample = torch.from_numpy(np.mean(eeg, axis=1)).to(torch.float)
             

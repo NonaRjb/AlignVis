@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH -A berzelius-2024-324
+#SBATCH -A berzelius-2025-35
 #SBATCH --mem 400GB
 #SBATCH --gpus=1
 #SBATCH --ntasks=1
@@ -12,8 +12,8 @@
 CONTAINER=/proj/rep-learning-robotics/users/x_nonra/containers/alignvis.sif
 data_path="/proj/rep-learning-robotics/users/x_nonra/alignvis/data/"
 save_path="/proj/rep-learning-robotics/users/x_nonra/data/visualization/gradcam"
-model_path="/proj/rep-learning-robotics/users/x_nonra/data/eeg_models_trained/nice_things-eeg-2_glocal/"
-img_encoder="gLocal_dino-vit-base-p8"
+model_path="/proj/rep-learning-robotics/users/x_nonra/data/eeg_models_trained/"
+img_encoder="harmonization_convnext_noalign"
 brain_encoder="nice"
 subject_id=10
 split="test"

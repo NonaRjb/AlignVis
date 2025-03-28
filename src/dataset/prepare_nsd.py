@@ -80,8 +80,10 @@ if __name__ == "__main__":
     data_path = os.path.join(args.data_path, "NSD_fmri")
     subject_id = args.sub
 
-    save_path = os.path.join(data_path, 'processed_data', 'subj' + "{:02d}".format(subject_id))
-    os.makedirs(save_path, exist_ok=True)
+    save_path_fmri = os.path.join(data_path, 'processed_data', 'sub' + "{:02d}".format(subject_id))
+    os.makedirs(save_path_fmri, exist_ok=True)
+    save_path_img = os.path.join(data_path, 'images', 'sub' + "{:02d}".format(subject_id))
+    os.makedirs(save_path_img, exist_ok=True)
 
     dataset = h5py.File(os.path.join(data_path, "nsdgeneral", "subj" + "{:02d}".format(subject_id) + "_nsdgeneral.hdf5"), 'r')
     # images = dataset['images']
@@ -116,8 +118,8 @@ if __name__ == "__main__":
         fmri_array[i] = voxels[sorted(sig_train[idx])].mean(0)
         print(i)
     
-    np.save(os.path.join(save_path, "nsd_train_fmri_sub" + "{:02d}".format(subject_id) + ".npy"), fmri_array)
-    np.save(os.path.join(save_path ,"nsd_train_stim_sub" + "{:02d}".format(subject_id) + ".npy"), stim_array)
+    np.save(os.path.join(save_path_fmri, "nsd_train_fmri_sub" + "{:02d}".format(subject_id) + ".npy"), fmri_array)
+    np.save(os.path.join(save_path_img ,"train.npy"), stim_array)
     print("Training data is saved.")
 
     fmri_array = np.zeros((num_test,vox_dim))
@@ -126,6 +128,6 @@ if __name__ == "__main__":
         stim_array[i] = stim[idx]
         fmri_array[i] = voxels[sorted(sig_test[idx])].mean(0)
         print(i)
-    np.save(os.path.join(save_path, "nsd_test_fmri_sub" + "{:02d}".format(subject_id) + ".npy"), fmri_array)
-    np.save(os.path.join(save_path ,"nsd_test_stim_sub" + "{:02d}".format(subject_id) + ".npy"), stim_array)
+    np.save(os.path.join(save_path_fmri, "nsd_test_fmri_sub" + "{:02d}".format(subject_id) + ".npy"), fmri_array)
+    np.save(os.path.join(save_path_img ,"test.npy"), stim_array)
     print("Test data is saved.")

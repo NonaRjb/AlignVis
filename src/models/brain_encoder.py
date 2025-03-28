@@ -94,7 +94,7 @@ class BrainEncoder(nn.Module): # TODO: now every architecture has a classificati
                                            lstm_layers=kwargs['lstm_layers'], device=device)
             print(get_graph_node_names(self.brain_backbone))
         elif backbone == 'brain-mlp':
-            self.brain_backbone = BrainMLP(out_dim=embed_dim, in_dim=int(n_channels*n_samples), clip_size=embed_dim)
+            self.brain_backbone = BrainMLP(out_dim=embed_dim, in_dim=int(n_channels*n_samples), clip_size=embed_dim, use_projector=False)
             if self.checkpoint:
                 self.brain_backbone.load_state_dict(self.checkpoint) 
             self.feature_dim = embed_dim
@@ -118,7 +118,7 @@ class BrainEncoder(nn.Module): # TODO: now every architecture has a classificati
         else:
             raise NotImplementedError
         
-        if 'subj' not in backbone and 'atm' not in backbone and 'eegconformer' not in backbone:
+        if 'subj' not in backbone and 'atm' not in backbone and 'eegconformer' not in backbone and 'brain-mlp' not in backbone:
             self.brain_backbone = create_feature_extractor(self.brain_backbone, return_nodes=[self.return_node])
         print("feature dim = ", self.feature_dim)
         
@@ -130,7 +130,7 @@ class BrainEncoder(nn.Module): # TODO: now every architecture has a classificati
             x = x.squeeze(1)
         if "subj" in self.backbone_type or 'atm' in self.backbone_type:
             out = self.brain_backbone(x, subject_id)
-        elif "eegconformer" in self.backbone_type:
+        elif self.backbone_type in ["eegconformer", "brain-mlp"]:
             out = self.brain_backbone(x)
         else:
             out = self.brain_backbone(x)[self.return_node]
