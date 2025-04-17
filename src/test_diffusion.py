@@ -873,13 +873,15 @@ if __name__ == "__main__":
                 warmup_epochs=warmup_epochs,
                 lr_patience=args.patience, 
                 es_patience=30,
-                return_subject_id=False,
+                return_subject_id=args.return_subject_id,
                 precompute_img_emb=True,
                 device=device,
                 )
         best_model = trainer.train(train_data_loader, val_data_loader)
-        trainer.brain_encoder.load_state_dict(best_model['brain_state_dict'])
-        trainer.projector_recon.load_state_dict(best_model['projector_state_dict'])
+        # trainer.brain_encoder.load_state_dict(best_model['brain_state_dict'])
+        # trainer.projector_recon.load_state_dict(best_model['projector_state_dict'])
+        # trainer.projector_ret.load_state_dict(best_model['projector_ret_state_dict'])
+        trainer.unet.load_state_dict(best_model['unet_state_dict'])
         trainer.generate(test_data_loader)
 
         

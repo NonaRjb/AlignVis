@@ -16,6 +16,7 @@ from sklearn.preprocessing import LabelEncoder
 from diffusers import UNet2DConditionModel, DDPMScheduler
 import src.training.training_utils as ut
 import copy 
+from src.tests.diffusion_prior import DiffusionPriorUNet
 
 
 class EEGProjector(nn.Module):
@@ -486,29 +487,34 @@ class EEGDiffusionTrainer:
         self.log_every = 0
 
         self.recon_alpha = 10
-        self.ret_alpha = 1
+        self.ret_alpha = 0
 
         self.projector_recon = EEGProjector(input_dim=eeg_embed_dim, output_dim=recon_dim).to(device)
+        self.projector_ret = EEGProjector(input_dim=eeg_embed_dim, output_dim=retrieve_dim).to(device)
 
-        self.unet = UNet2DConditionModel(
-            sample_size=1,
-            in_channels=recon_dim,
-            out_channels=recon_dim,
-            layers_per_block=2,
-            block_out_channels=(recon_dim, recon_dim, recon_dim),
-            down_block_types=("DownBlock2D",) * 3,
-            up_block_types=("UpBlock2D",) * 3,
-            cross_attention_dim=recon_dim,
-        ).to(device)
+        # self.unet = UNet2DConditionModel(
+        #     sample_size=1,
+        #     in_channels=recon_dim,
+        #     out_channels=recon_dim,
+        #     layers_per_block=2,
+        #     block_out_channels=(recon_dim, recon_dim, recon_dim),
+        #     down_block_types=("DownBlock2D",) * 3,
+        #     up_block_types=("UpBlock2D",) * 3,
+        #     cross_attention_dim=recon_dim,
+        # ).to(device)
+        self.unet = DiffusionPriorUNet(
+            cond_dim=retrieve_dim,
+            dropout=0.1,
+            ).to(device)
 
         self.scheduler = DDPMScheduler(num_train_timesteps=1000)
         self.brain_encoder = brain_encoder.to(device)
-        # self.optimizer = torch.optim.AdamW(
-        #     list(self.brain_encoder.parameters()) + list(self.projector_recon.parameters()) + list(self.unet.parameters()), lr=self.lr
-        # )
         self.optimizer = torch.optim.AdamW(
-            list(self.brain_encoder.parameters()) + list(self.projector_recon.parameters()), lr=self.lr, weight_decay=1e-1
+            list(self.unet.parameters()), lr=self.lr
         )
+        # self.optimizer = torch.optim.AdamW(
+        #     list(self.brain_encoder.parameters()) + list(self.projector_recon.parameters()), lr=self.lr, weight_decay=1e-1
+        # )
         self.generator = generator.to(device)
 
     def train(self, train_data_loader: DataLoader, val_data_loader: DataLoader):
@@ -528,8 +534,9 @@ class EEGDiffusionTrainer:
         patience = self.es_patience
         print("Training Started...")
         for epoch in range(self.epochs):
-            # self.unet.train()
+            self.unet.train()
             self.projector_recon.train()
+            # self.projector_ret.train()
             # self.brain_encoder.eval()
             self.brain_encoder.train()
             print(f"Epoch {epoch}/{self.epochs}.")
@@ -551,32 +558,36 @@ class EEGDiffusionTrainer:
                 image_recon = image_recon.to(self.device, non_blocking=True) # (B, 1024, 1, 1)
 
                 with torch.autocast(device_type="cuda" if self.device.startswith("cuda") else "cpu", enabled=self.mixed_precision):
-                    # with torch.no_grad():
-                    if self.return_subject_id:
-                        z_i = self.brain_encoder(eeg, subject_id)
-                    else:
-                        z_i = self.brain_encoder(eeg)
-                    
-                    cond = self.projector_recon(z_i)
-                    z_j = image_ret
+                    with torch.no_grad():
+                        if self.return_subject_id:
+                            z_i = self.brain_encoder(eeg, subject_id)
+                        else:
+                            z_i = self.brain_encoder(eeg)
+                        
+                    # cond = self.projector_recon(z_i)
+                    cond = z_i
+                    # z_j = image_ret
                 
-                    z_i = z_i - torch.mean(z_i, dim=-1, keepdim=True)
-                    z_i = F.normalize(z_i, p=2, dim=-1)
-                    z_j = z_j - torch.mean(z_j, dim=-1, keepdim=True)
-                    z_j = F.normalize(z_j, p=2, dim=-1)
+                    # z_i = z_i - torch.mean(z_i, dim=-1, keepdim=True)
+                    # z_i = F.normalize(z_i, p=2, dim=-1)
+                    # z_j = z_j - torch.mean(z_j, dim=-1, keepdim=True)
+                    # z_j = F.normalize(z_j, p=2, dim=-1)
 
-                    # t = torch.randint(0, self.scheduler.config.num_train_timesteps, (eeg.size(0),), device=self.device).long()
-                    # noise = torch.randn_like(image_recon)
-                    # noisy = self.scheduler.add_noise(image_recon, noise, t)
+                    t = torch.randint(0, self.scheduler.config.num_train_timesteps, (eeg.size(0),), device=self.device).long()
+                    noise = torch.randn_like(image_recon)
+                    noisy = self.scheduler.add_noise(image_recon, noise, t)
 
                     # noisy = noisy.unsqueeze(-1).unsqueeze(-1)  # (B, 1024, 1, 1)
                     # cond = cond.unsqueeze(1)  # (B, 1, 1024)
                     # pred = self.unet(noisy, t, encoder_hidden_states=cond).sample.squeeze()
 
-                    loss_ret = self.loss_ret(z_i, z_j)
-                    # loss_recon = self.loss_recon(pred, image_recon)
-                    loss_recon = self.loss_recon(cond, image_recon)
-                    loss = (self.ret_alpha * loss_ret + self.recon_alpha * loss_recon) / 2
+                    pred = self.unet(noisy, t, encoder_hidden_states=cond)
+
+                    # loss_ret = self.loss_ret(z_i, z_j)
+                    loss_recon = self.loss_recon(pred, image_recon)
+                    # loss_recon = self.loss_recon(cond, image_recon)
+                    # loss = (self.ret_alpha * loss_ret + self.recon_alpha * loss_recon) / 2
+                    loss = self.recon_alpha * loss_recon
 
                     # print(f"Loss Ret: {loss_ret} | Loss Recon: {loss_recon}")
 
@@ -585,7 +596,7 @@ class EEGDiffusionTrainer:
                     scaler.scale(loss).backward()
                     if self.clip_grad is not None:
                         scaler.unscale_(self.optimizer)
-                        torch.nn.utils.clip_grad_norm_(self.brain_encoder.parameters(), self.clip_grad)
+                        torch.nn.utils.clip_grad_norm_(self.unet.parameters(), self.clip_grad)
                     scaler.step(self.optimizer)
                     scaler.update()
 
@@ -597,8 +608,10 @@ class EEGDiffusionTrainer:
                 patience = self.es_patience
                 best_model = {
                     'epoch': epoch,
-                    'brain_state_dict': copy.deepcopy(self.brain_encoder.state_dict()),
-                    'projector_state_dict': copy.deepcopy(self.projector_recon.state_dict()),
+                    # 'brain_state_dict': copy.deepcopy(self.brain_encoder.state_dict()),
+                    # 'projector_state_dict': copy.deepcopy(self.projector_recon.state_dict()),
+                    'unet_state_dict': copy.deepcopy(self.unet.state_dict()),
+                    # 'projector_ret_state_dict': copy.deepcopy(self.projector_ret.state_dict()),
                     'optimizer_state_dict': copy.deepcopy(self.optimizer.state_dict()),
                     'val_loss': val_loss,
                 }
@@ -606,8 +619,9 @@ class EEGDiffusionTrainer:
         return best_model
     
     def evaluate(self, data_loader):
-        # self.unet.eval()
-        self.projector_recon.eval()
+        self.unet.eval()
+        # self.projector_recon.eval()
+        # self.projector_ret.eval()
         self.brain_encoder.eval()
         with torch.no_grad():
             loss_epoch = []
@@ -631,70 +645,87 @@ class EEGDiffusionTrainer:
                     else:
                         z_i = self.brain_encoder(eeg)
                     
-                    cond = self.projector_recon(z_i)
-                    z_j = image_ret
+                    # cond = self.projector_recon(z_i)
+                    cond = z_i
+                    # z_j = image_ret
                 
-                    z_i = z_i - torch.mean(z_i, dim=-1, keepdim=True)
-                    z_i = F.normalize(z_i, p=2, dim=-1)
-                    z_j = z_j - torch.mean(z_j, dim=-1, keepdim=True)
-                    z_j = F.normalize(z_j, p=2, dim=-1)
+                    # z_i = z_i - torch.mean(z_i, dim=-1, keepdim=True)
+                    # z_i = F.normalize(z_i, p=2, dim=-1)
+                    # z_j = z_j - torch.mean(z_j, dim=-1, keepdim=True)
+                    # z_j = F.normalize(z_j, p=2, dim=-1)
 
-                    # t = torch.randint(0, self.scheduler.config.num_train_timesteps, (eeg.size(0),), device=self.device).long()
-                    # noise = torch.randn_like(image_recon)
-                    # noisy = self.scheduler.add_noise(image_recon, noise, t)
+                    t = torch.randint(0, self.scheduler.config.num_train_timesteps, (eeg.size(0),), device=self.device).long()
+                    noise = torch.randn_like(image_recon)
+                    noisy = self.scheduler.add_noise(image_recon, noise, t)
 
                     # noisy = noisy.unsqueeze(-1).unsqueeze(-1)  # (B, 1024, 1, 1)
                     # cond = cond.unsqueeze(1)  # (B, 1, 1024)
                     # pred = self.unet(noisy, t, encoder_hidden_states=cond).sample.squeeze()
 
-                    loss_ret = self.loss_ret(z_i, z_j)
-                    # loss_recon = self.loss_recon(pred, image_recon)
-                    loss_recon = self.loss_recon(cond, image_recon)
-                    loss = (self.ret_alpha * loss_ret + self.recon_alpha * loss_recon) / 2
+                    pred = self.unet(noisy, t, encoder_hidden_states=cond)
+
+                    # loss_ret = self.loss_ret(z_i, z_j)
+                    loss_recon = self.loss_recon(pred, image_recon)
+                    # loss_recon = self.loss_recon(cond, image_recon)
+                    # loss = (self.ret_alpha * loss_ret + self.recon_alpha * loss_recon) / 2
+                    loss = self.recon_alpha * loss_recon
                 loss_epoch.append(loss.item())
 
         mean_loss_epoch = np.mean(loss_epoch)
         return mean_loss_epoch
 
     @torch.no_grad()
-    def sample_clip_embedding(self, eeg):
+    def sample_clip_embedding(self, eeg, subject_id=None):
         self.unet.eval()
-        self.projector_recon.eval()
+        # self.projector_recon.eval()
         self.brain_encoder.eval()
 
-        # eeg_embed = self.brain_encoder(eeg.to(self.device))
-        # cond = self.projector_recon(eeg_embed).unsqueeze(1)  # (B, 1, 1024)
         print(eeg.shape)
+        if self.return_subject_id:
+            eeg_embed = self.brain_encoder(eeg.to(self.device), subject_id.to(self.device))
+        else:
+            eeg_embed = self.brain_encoder(eeg.to(self.device))
+        # cond = self.projector_recon(eeg_embed).unsqueeze(1)  # (B, 1, 1024)
+        cond = eeg_embed
         # cond = eeg.unsqueeze(0).to(self.device)  # (B, 1, 1024)
-        cond = eeg.to(self.device)
+        # cond = eeg.to(self.device)
+        print(cond.shape)
         b = cond.size(0)
-        latents = torch.randn((b, 1024, 1, 1), device=self.device)
+        # latents = torch.randn((b, 1024, 1, 1), device=self.device)
+        latents = torch.randn((b, 1024), device=self.device)
 
         for t in reversed(range(self.scheduler.config.num_train_timesteps)):
             t_batch = torch.full((b,), t, device=self.device, dtype=torch.long)
             noise_pred = self.unet(latents, t_batch, encoder_hidden_states=cond).sample
             latents = self.scheduler.step(noise_pred, t_batch, latents).prev_sample
         
-        clip_embedding = latents.squeeze(-1).squeeze(-1)
+        # clip_embedding = latents.squeeze(-1).squeeze(-1)
+        clip_embedding = latents
 
         return clip_embedding  # (B, 1024)
     
     @torch.no_grad()
-    def generate_image_from_embedding(self, eeg, filename="eeg_to_image.png"):
-        # clip_embedding = self.sample_clip_embedding(eeg)
+    def generate_image_from_embedding(self, eeg, subject_id=None, filename="eeg_to_image.png"):
+        # if subject_id is not None:
+        #     clip_embedding = self.sample_clip_embedding(eeg, subject_id)
+        # else:
+        #     clip_embedding = self.sample_clip_embedding(eeg)
         # print(clip_embedding.shape)
         # clip_embedding = clip_embedding.unsqueeze(0)
         # clip_embedding = eeg.unsqueeze(0).to(self.device)
         print(eeg.shape)
-        clip_embedding = self.projector_recon(self.brain_encoder(eeg.to(self.device)))
+        if self.return_subject_id:
+            clip_embedding = self.projector_recon(self.brain_encoder(eeg.to(self.device), subject_id.to(self.device)))
+        else:
+            clip_embedding = self.projector_recon(self.brain_encoder(eeg.to(self.device)))
         clip_embedding = clip_embedding.unsqueeze(0)
         print(clip_embedding.shape)
         negative_embeds = torch.zeros_like(clip_embedding)
         clip_embedding = torch.cat([negative_embeds, clip_embedding], dim=0)
         images = self.generator(
-            prompt='',
+            prompt='a realistic photo',
             ip_adapter_image_embeds=[clip_embedding],
-            num_inference_steps=50,
+            num_inference_steps=100,
             guidance_scale=1.5,
             output_type="pil"
         ).images
@@ -708,10 +739,13 @@ class EEGDiffusionTrainer:
         for data, _ in progress_bar:
             if self.return_subject_id:
                 eeg, _, img = data[0]
+                subject_id = data[1]
+                self.generate_image_from_embedding(eeg, subject_id=subject_id, filename=str(num)+"_eeg_to_image.png")
             else:
                 eeg, _, img = data
+                self.generate_image_from_embedding(eeg, filename=str(num)+"_eeg_to_image.png")
             print(img.shape)
-            self.generate_image_from_embedding(eeg, str(num) + "_eeg_to_image.png")
+            
             num += 1
             if num == 3:
                 break
