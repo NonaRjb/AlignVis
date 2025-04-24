@@ -36,10 +36,10 @@ In progress...
 1. Download preprocessed MEG data from *Things MEG*'s repository ([link](https://openneuro.org/datasets/ds004212)) (It's under derivatives directory).
 2. Use things_meg_preprocess.ipynb to epoch the data (segment trials) and exclude test classes from the training.
 ### fMRI
-1. Download NSD image stimuli from NSD repository ([link](https://natural-scenes-dataset.s3.amazonaws.com/index.html#nsddata_stimuli/stimuli/nsd/)) and place it under *NSD_fmri/images* folder
+1. Download NSD image stimuli from [here](https://natural-scenes-dataset.s3.amazonaws.com/index.html#nsddata_stimuli/stimuli/nsd/) and place it under *NSD_fmri/images* folder
 2. Download nsdgeneral files for the desired subjects from [here](https://huggingface.co/datasets/pscotti/naturalscenesdataset/tree/main) and put them under *NSD_fmri/nsdgeneral* folder
-3. Download nsd_expdesign.mat from [here](https://natural-scenes-dataset.s3.amazonaws.com/index.html#nsddata/experiments/nsd/) and place it under NSD_fmri folder. 
-3. run 
+3. Download *nsd_expdesign.mat* from [here](https://natural-scenes-dataset.s3.amazonaws.com/index.html#nsddata/experiments/nsd/) and place it under NSD_fmri folder. 
+3. Run the following command for every subject. 
   ```bash
   python src/dataset/prepare_nsd.py --data_path path/to/NSD_fMRI/directory --sub subject_id
   ```
