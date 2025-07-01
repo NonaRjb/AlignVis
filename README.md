@@ -1,5 +1,5 @@
 # Human-Aligned Image Models Improve Visual Decoding from the Brain
-
+### Official repository for the paper: [Human-Aligned Image Models Improve Visual Decoding from the Brain](https://openreview.net/pdf?id=i6uxIAAMje) (ICML 2025)
 <div align="center">
   <img src="https://github.com/NonaRjb/AlignVis/blob/main/alignment_method_cr.png?raw=true" alt="alt text" width="800"/>
 </div>
@@ -48,6 +48,24 @@ In progress...
 ### Training Brain Encoders
 The main Python script to train the brain encoder using frozen image encoders and contrastive learning is provided by `src/train_brain_clip.py`.
 ### Testing the Performance with Pretrained Models
+When you train the model with `train_brain_clip.py`, you can perform the image retrieval downstream task on the test set by setting `--downstream retrieval`. 
 ### Grad-CAM analysis
+To generate the gradient maps of a trained brain encoder, you can run:
+```bash
+python src/evaluation/eeg_heatmap.py --data_path <path/to/the/data/directory> --save_path <path/to/the/output/directory> --model_path <path/to/the/checkpoints/directory> --img_encoder <image_encoder_name> --brain_encoder <brain_encoder_name> --subject_id <subject_id> --split <data_split> --seed <seed_number>
+```
 ### Visualizing Top-K Retrieved Images
-
+```bash
+python src/evaluation/visualize_topk_images.py --data_path <path/to/the/data/directory> --save_path <path/to/the/output/directory> --model_path "$model_path" --img_encoder_aligned <human_aligned_image_encoder_name> --img_encoder_noalign <unaligned_image_encoder_name> --brain_encoder <brain_encoder_name> --subject_id <subject_id> --split <data_split> --seed <seed_number>
+```
+## Citation
+```
+@inproceedings{
+rajabi2025humanaligned,
+title={Human-Aligned Image Models Improve Visual Decoding from the Brain},
+author={Nona Rajabi and Antonio H. Ribeiro and Miguel Vasco and Farzaneh Taleb and M{\r{a}}rten Bj{\"o}rkman and Danica Kragic},
+booktitle={Forty-second International Conference on Machine Learning},
+year={2025},
+url={https://openreview.net/forum?id=i6uxIAAMje}
+}
+``
