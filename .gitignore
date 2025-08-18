@@ -1,6 +1,9 @@
 # 
 src/tests/*
 data/*
+!data/*.dvc
+!data/**/*.dvc
+!data/**/*.dvc
 logs/
 wandb/
 *.png
