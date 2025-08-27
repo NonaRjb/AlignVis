@@ -11,7 +11,7 @@ import pickle
 import json
 import os
 
-from src.dataset.data_utils import _transform
+from src.dataset.data_utils import _transform, unzip_nested_files
 
 
 class ThingsEEG2Processed(Dataset):
