@@ -30,11 +30,17 @@ We used publicly available EEG and MEG datasets.
    ```
 **Option 2**
 
-In progress...
+You can take the data from [our HuggingFace repository](https://huggingface.co/datasets/nonarjb/alignvis)
 
 ### MEG
+**Option 1**
 1. Download preprocessed MEG data from *Things MEG*'s repository ([link](https://openneuro.org/datasets/ds004212)) (It's under derivatives directory).
 2. Use things_meg_preprocess.ipynb to epoch the data (segment trials) and exclude test classes from the training.
+
+**Option 2**
+
+You can take the data from [our HuggingFace repository](https://huggingface.co/datasets/nonarjb/alignvis)
+
 ### fMRI
 1. Download NSD image stimuli from [here](https://natural-scenes-dataset.s3.amazonaws.com/index.html#nsddata_stimuli/stimuli/nsd/) and place it under *NSD_fmri/images* folder
 2. Download nsdgeneral files for the desired subjects from [here](https://huggingface.co/datasets/pscotti/naturalscenesdataset/tree/main) and put them under *NSD_fmri/nsdgeneral* folder
